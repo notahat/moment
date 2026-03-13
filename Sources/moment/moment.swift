@@ -85,7 +85,7 @@ struct Moment {
                 let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
                 let kindStr = entry.isReminder ? colored(" [reminder]", .yellow) : ""
                 let joinStr = entry.meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
-                let titleStr = entry.contactURL.map { hyperlink(entry.title, url: $0) } ?? entry.title
+                let titleStr = entry.contactURL.map { hyperlink(entry.title, url: $0) + " 🎈" } ?? entry.title
                 print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(kindStr)\(joinStr)")
             }
         }
