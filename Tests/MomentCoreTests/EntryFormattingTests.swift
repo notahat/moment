@@ -1,8 +1,8 @@
-import Testing
 import Foundation
 @testable import MomentCore
+import Testing
 
-// Strip ANSI escape codes for easier comparison in tests
+/// Strip ANSI escape codes for easier comparison in tests
 private func stripANSI(_ string: String) -> String {
     string.replacing(#/\u{001B}(\][^\u{001B}]*(\u{001B}\\)|\[[0-9;]*m)/#, with: "")
 }
@@ -12,13 +12,13 @@ private struct Link: Equatable {
     let text: String
 }
 
-// Extract hyperlinks from OSC 8 escape sequences
+/// Extract hyperlinks from OSC 8 escape sequences
 private func extractLinks(_ string: String) -> [Link] {
     let pattern = #/\u{001B}\]8;;(?<url>[^\u{001B}]*)\u{001B}\\(?<text>[^\u{001B}]*)\u{001B}\]8;;\u{001B}\\/#
     return string.matches(of: pattern).map { Link(url: String($0.url), text: String($0.text)) }
 }
 
-@Suite struct EntryFormattingTests {
+struct EntryFormattingTests {
     let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
@@ -36,20 +36,20 @@ private func extractLinks(_ string: String) -> [Link] {
         return Calendar.current.date(from: components)!
     }
 
-    @Test func timedEvent() {
+    @Test func `timed event`() {
         let entry = Entry(date: makeDate(hour: 14, minute: 30), isAllDay: false, title: "Team Meeting", type: .event(meetingURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  2:30 pm  Team Meeting")
     }
 
-    @Test func allDayEvent() {
+    @Test func `all day event`() {
         let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Public Holiday", type: .event(meetingURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  All day  Public Holiday")
     }
 
-    @Test func eventWithMeetingURL() {
-        let url = URL(string: "https://meet.google.com/abc-defg-hij")!
+    @Test func `event with meeting URL`() throws {
+        let url = try #require(URL(string: "https://meet.google.com/abc-defg-hij"))
         let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Standup", type: .event(meetingURL: url))
         let output = entry.format(timeFormatter: timeFormatter)
         #expect(stripANSI(output) == "  9:00 am  Standup [Join]")
@@ -62,15 +62,15 @@ private func extractLinks(_ string: String) -> [Link] {
         #expect(output == "  10:00 am Buy milk [reminder]")
     }
 
-    @Test func birthdayWithContactURL() {
-        let url = URL(string: "addressbook://123")!
+    @Test func `birthday with contact URL`() throws {
+        let url = try #require(URL(string: "addressbook://123"))
         let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's 30th Birthday", type: .birthday(contactURL: url))
         let output = entry.format(timeFormatter: timeFormatter)
         #expect(stripANSI(output) == "  All day  Jane Smith's 30th Birthday 🎈")
         #expect(extractLinks(output) == [Link(url: "addressbook://123", text: "Jane Smith's 30th Birthday")])
     }
 
-    @Test func birthdayWithoutContactURL() {
+    @Test func `birthday without contact URL`() {
         let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's Birthday", type: .birthday(contactURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  All day  Jane Smith's Birthday 🎈")

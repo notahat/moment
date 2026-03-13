@@ -40,13 +40,13 @@ public struct Entry {
         let titleStr: String
         let suffixStr: String
         switch type {
-        case .event(let meetingURL):
+        case let .event(meetingURL):
             titleStr = title
             suffixStr = meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
         case .reminder:
             titleStr = title
             suffixStr = colored(" [reminder]", .yellow)
-        case .birthday(let contactURL):
+        case let .birthday(contactURL):
             titleStr = contactURL.map { hyperlink(title, url: $0) } ?? title
             suffixStr = " 🎈"
         }

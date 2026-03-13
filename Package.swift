@@ -8,14 +8,14 @@ let package = Package(
         .executableTarget(
             name: "moment",
             dependencies: ["MomentCore"],
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            swiftSettings: [.swiftLanguageMode(.v5)],
         ),
         .target(
-            name: "MomentCore"
+            name: "MomentCore",
         ),
         .testTarget(
             name: "MomentCoreTests",
-            dependencies: ["MomentCore"]
+            dependencies: ["MomentCore"],
         ),
-    ]
+    ],
 )

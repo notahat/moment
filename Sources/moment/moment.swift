@@ -39,7 +39,7 @@ struct Moment {
 
     static func fetchEntries(from start: Date, to end: Date) async -> [Entry] {
         let store = EKEventStore()
-        let entries = fetchEvents(store: store, from: start, to: end) + (await fetchReminders(store: store, from: start, to: end))
+        let entries = await fetchEvents(store: store, from: start, to: end) + fetchReminders(store: store, from: start, to: end)
         return entries.sorted { $0.date < $1.date }
     }
 
