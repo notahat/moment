@@ -1,3 +1,4 @@
+// @preconcurrency suppresses Swift 6 Sendable errors for EventKit types that predate strict concurrency.
 @preconcurrency import EventKit
 import Foundation
 
