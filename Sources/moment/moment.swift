@@ -33,18 +33,28 @@ struct Moment {
             try await store.requestFullAccessToReminders()
         } catch {
             print("Error requesting access: \(error)")
-            return
+            exit(1)
+        }
+
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
+            print("Calendar access denied. Grant access in System Settings > Privacy & Security > Calendars.")
+            exit(1)
+        }
+
+        guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess else {
+            print("Reminders access denied. Grant access in System Settings > Privacy & Security > Reminders.")
+            exit(1)
         }
 
         let now = Date()
-        let end = Calendar.current.date(byAdding: .day, value: 3, to: now)!
+        let end = Calendar.current.date(byAdding: .day, value: 7, to: now)!
 
         let entries = (fetchEvents(store: store, from: now, to: end)
             + (await fetchReminders(store: store, from: now, to: end)))
             .sorted { $0.date < $1.date }
 
         if entries.isEmpty {
-            print("No events or reminders in the next 3 days.")
+            print("No events or reminders in the next 7 days.")
             return
         }
 
@@ -72,13 +82,11 @@ struct Moment {
     }
 
     static func fetchEvents(store: EKEventStore, from start: Date, to end: Date) -> [Entry] {
-        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return [] }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         return store.events(matching: predicate).map { Entry(event: $0) }
     }
 
     static func fetchReminders(store: EKEventStore, from start: Date, to end: Date) async -> [Entry] {
-        guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess else { return [] }
         let predicate = store.predicateForIncompleteReminders(withDueDateStarting: start, ending: end, calendars: nil)
         return await withCheckedContinuation { continuation in
             store.fetchReminders(matching: predicate) { reminders in
