@@ -3,7 +3,7 @@
 import Foundation
 
 public enum EntryType: Sendable {
-    case event(meetingURL: URL?)
+    case event(meetingURL: URL?, locationURL: URL?)
     case reminder
     case birthday(contactURL: URL?)
 }
@@ -18,7 +18,17 @@ public struct Entry: Sendable {
         date = event.startDate
         isAllDay = event.isAllDay
         title = event.title ?? "(no title)"
-        type = event.calendar.type == .birthday ? .birthday(contactURL: event.url) : .event(meetingURL: event.url)
+        if event.calendar.type == .birthday {
+            type = .birthday(contactURL: event.url)
+        } else {
+            let locationURL = event.location.flatMap {
+                var components = URLComponents()
+                components.scheme = "maps"
+                components.queryItems = [URLQueryItem(name: "q", value: $0)]
+                return components.url
+            }
+            type = .event(meetingURL: event.url, locationURL: locationURL)
+        }
     }
 
     public init(reminder: EKReminder, fallbackDate: Date) {
@@ -41,9 +51,11 @@ public struct Entry: Sendable {
         let titleStr: String
         let suffixStr: String
         switch type {
-        case let .event(meetingURL):
+        case let .event(meetingURL, locationURL):
             titleStr = title
-            suffixStr = meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
+            let joinStr = meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
+            let mapStr = locationURL.map { " " + colored(hyperlink("[Map]", url: $0), .blue) } ?? ""
+            suffixStr = joinStr + mapStr
         case .reminder:
             titleStr = title
             suffixStr = colored(" [reminder]", .yellow)

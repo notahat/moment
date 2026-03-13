@@ -37,23 +37,31 @@ struct EntryFormattingTests {
     }
 
     @Test func `timed event`() {
-        let entry = Entry(date: makeDate(hour: 14, minute: 30), isAllDay: false, title: "Team Meeting", type: .event(meetingURL: nil))
+        let entry = Entry(date: makeDate(hour: 14, minute: 30), isAllDay: false, title: "Team Meeting", type: .event(meetingURL: nil, locationURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  2:30 pm  Team Meeting")
     }
 
     @Test func `all day event`() {
-        let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Public Holiday", type: .event(meetingURL: nil))
+        let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Public Holiday", type: .event(meetingURL: nil, locationURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  All day  Public Holiday")
     }
 
     @Test func `event with meeting URL`() throws {
         let url = try #require(URL(string: "https://meet.google.com/abc-defg-hij"))
-        let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Standup", type: .event(meetingURL: url))
+        let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Standup", type: .event(meetingURL: url, locationURL: nil))
         let output = entry.format(timeFormatter: timeFormatter)
         #expect(stripANSI(output) == "  9:00 am  Standup [Join]")
         #expect(extractLinks(output) == [Link(url: "https://meet.google.com/abc-defg-hij", text: "[Join]")])
+    }
+
+    @Test func `event with location`() throws {
+        let url = try #require(URL(string: "maps://?q=1+Infinite+Loop"))
+        let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Visit", type: .event(meetingURL: nil, locationURL: url))
+        let output = entry.format(timeFormatter: timeFormatter)
+        #expect(stripANSI(output) == "  9:00 am  Visit [Map]")
+        #expect(extractLinks(output) == [Link(url: "maps://?q=1+Infinite+Loop", text: "[Map]")])
     }
 
     @Test func reminder() {
