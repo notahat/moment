@@ -8,7 +8,6 @@ let package = Package(
         .executableTarget(
             name: "moment",
             dependencies: ["MomentCore"],
-            swiftSettings: [.swiftLanguageMode(.v5)],
         ),
         .target(
             name: "MomentCore",

@@ -2,13 +2,13 @@
 @preconcurrency import EventKit
 import Foundation
 
-public enum EntryType {
+public enum EntryType: Sendable {
     case event(meetingURL: URL?)
     case reminder
     case birthday(contactURL: URL?)
 }
 
-public struct Entry {
+public struct Entry: Sendable {
     public let date: Date
     public let isAllDay: Bool
     public let title: String
