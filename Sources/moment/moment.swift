@@ -1,26 +1,23 @@
 @preconcurrency import EventKit
 import Foundation
 
+enum EntryType {
+    case event(meetingURL: URL?)
+    case reminder
+    case birthday(contactURL: URL?)
+}
+
 struct Entry {
     let date: Date
     let isAllDay: Bool
     let title: String
-    let isReminder: Bool
-    let meetingURL: URL?
-    let contactURL: URL?
+    let type: EntryType
 
     init(event: EKEvent) {
         date = event.startDate
         isAllDay = event.isAllDay
         title = event.title ?? "(no title)"
-        isReminder = false
-        if event.calendar.type == .birthday {
-            meetingURL = nil
-            contactURL = event.url
-        } else {
-            meetingURL = event.url
-            contactURL = nil
-        }
+        type = event.calendar.type == .birthday ? .birthday(contactURL: event.url) : .event(meetingURL: event.url)
     }
 
     init(reminder: EKReminder, fallbackDate: Date) {
@@ -28,9 +25,7 @@ struct Entry {
         date = components?.date ?? fallbackDate
         isAllDay = components?.hour == nil
         title = reminder.title ?? "(no title)"
-        isReminder = true
-        meetingURL = nil
-        contactURL = nil
+        type = .reminder
     }
 }
 
@@ -83,10 +78,20 @@ struct Moment {
             print("\n\(colored(day, .bold, .blue))")
             for entry in entriesByDay[day]! {
                 let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
-                let kindStr = entry.isReminder ? colored(" [reminder]", .yellow) : ""
-                let joinStr = entry.meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
-                let titleStr = entry.contactURL.map { hyperlink(entry.title, url: $0) + " 🎈" } ?? entry.title
-                print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(kindStr)\(joinStr)")
+                let titleStr: String
+                let suffixStr: String
+                switch entry.type {
+                case .event(let meetingURL):
+                    titleStr = entry.title
+                    suffixStr = meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
+                case .reminder:
+                    titleStr = entry.title
+                    suffixStr = colored(" [reminder]", .yellow)
+                case .birthday(let contactURL):
+                    titleStr = contactURL.map { hyperlink(entry.title, url: $0) } ?? entry.title
+                    suffixStr = " 🎈"
+                }
+                print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(suffixStr)")
             }
         }
     }
