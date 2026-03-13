@@ -1,33 +1,6 @@
 @preconcurrency import EventKit
 import Foundation
-
-enum EntryType {
-    case event(meetingURL: URL?)
-    case reminder
-    case birthday(contactURL: URL?)
-}
-
-struct Entry {
-    let date: Date
-    let isAllDay: Bool
-    let title: String
-    let type: EntryType
-
-    init(event: EKEvent) {
-        date = event.startDate
-        isAllDay = event.isAllDay
-        title = event.title ?? "(no title)"
-        type = event.calendar.type == .birthday ? .birthday(contactURL: event.url) : .event(meetingURL: event.url)
-    }
-
-    init(reminder: EKReminder, fallbackDate: Date) {
-        let components = reminder.dueDateComponents
-        date = components?.date ?? fallbackDate
-        isAllDay = components?.hour == nil
-        title = reminder.title ?? "(no title)"
-        type = .reminder
-    }
-}
+import MomentCore
 
 @main
 struct Moment {
@@ -77,21 +50,7 @@ struct Moment {
         for day in days {
             print("\n\(colored(day, .bold, .blue))")
             for entry in entriesByDay[day]! {
-                let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
-                let titleStr: String
-                let suffixStr: String
-                switch entry.type {
-                case .event(let meetingURL):
-                    titleStr = entry.title
-                    suffixStr = meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
-                case .reminder:
-                    titleStr = entry.title
-                    suffixStr = colored(" [reminder]", .yellow)
-                case .birthday(let contactURL):
-                    titleStr = contactURL.map { hyperlink(entry.title, url: $0) } ?? entry.title
-                    suffixStr = " 🎈"
-                }
-                print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(suffixStr)")
+                print(entry.format(timeFormatter: timeFormatter))
             }
         }
     }
