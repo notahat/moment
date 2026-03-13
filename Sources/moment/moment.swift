@@ -1,6 +1,18 @@
 @preconcurrency import EventKit
 import Foundation
 
+enum Color: String {
+    case reset = "\u{001B}[0m"
+    case bold = "\u{001B}[1m"
+    case dim = "\u{001B}[2m"
+    case blue = "\u{001B}[34m"
+    case yellow = "\u{001B}[33m"
+}
+
+func colored(_ text: String, _ colors: Color...) -> String {
+    colors.map(\.rawValue).joined() + text + Color.reset.rawValue
+}
+
 struct Entry {
     let date: Date
     let isAllDay: Bool
@@ -59,8 +71,7 @@ struct Moment {
         }
 
         let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .none
+        dateFormatter.dateFormat = "EEEE d MMM yyyy"
 
         let timeFormatter = DateFormatter()
         timeFormatter.timeStyle = .short
@@ -71,13 +82,13 @@ struct Moment {
         for entry in entries {
             let day = dateFormatter.string(from: entry.date)
             if day != currentDay {
-                print("\n\(day)")
+                print("\n\(colored(day, .bold, .blue))")
                 currentDay = day
             }
 
-            let timeStr = entry.isAllDay ? "All day " : timeFormatter.string(from: entry.date)
-            let kindStr = entry.isReminder ? " [reminder]" : ""
-            print("  \(timeStr)  \(entry.title)\(kindStr)")
+            let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
+            let kindStr = entry.isReminder ? colored(" [reminder]", .yellow) : ""
+            print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(entry.title)\(kindStr)")
         }
     }
 
