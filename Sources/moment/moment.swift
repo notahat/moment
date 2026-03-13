@@ -76,25 +76,18 @@ struct Moment {
         timeFormatter.timeStyle = .short
         timeFormatter.dateStyle = .none
 
-        var currentDay: String?
+        let entriesByDay = Dictionary(grouping: entries) { dateFormatter.string(from: $0.date) }
+        let days = entriesByDay.keys.sorted()
 
-        for entry in entries {
-            let day = dateFormatter.string(from: entry.date)
-            if day != currentDay {
-                print("\n\(colored(day, .bold, .blue))")
-                currentDay = day
+        for day in days {
+            print("\n\(colored(day, .bold, .blue))")
+            for entry in entriesByDay[day]! {
+                let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
+                let kindStr = entry.isReminder ? colored(" [reminder]", .yellow) : ""
+                let joinStr = entry.meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
+                let titleStr = entry.contactURL.map { hyperlink(entry.title, url: $0) } ?? entry.title
+                print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(kindStr)\(joinStr)")
             }
-
-            let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
-            let kindStr = entry.isReminder ? colored(" [reminder]", .yellow) : ""
-            let joinStr = entry.meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
-            let titleStr: String
-            if let contactURL = entry.contactURL {
-                titleStr = hyperlink(entry.title, url: contactURL)
-            } else {
-                titleStr = entry.title
-            }
-            print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(kindStr)\(joinStr)")
         }
     }
 
