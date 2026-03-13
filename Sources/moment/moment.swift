@@ -13,17 +13,30 @@ func colored(_ text: String, _ colors: Color...) -> String {
     colors.map(\.rawValue).joined() + text + Color.reset.rawValue
 }
 
+func hyperlink(_ text: String, url: URL) -> String {
+    "\u{001B}]8;;\(url.absoluteString)\u{001B}\\\(text)\u{001B}]8;;\u{001B}\\"
+}
+
 struct Entry {
     let date: Date
     let isAllDay: Bool
     let title: String
     let isReminder: Bool
+    let meetingURL: URL?
+    let contactURL: URL?
 
     init(event: EKEvent) {
         date = event.startDate
         isAllDay = event.isAllDay
         title = event.title ?? "(no title)"
         isReminder = false
+        if event.calendar.type == .birthday {
+            meetingURL = nil
+            contactURL = event.url
+        } else {
+            meetingURL = event.url
+            contactURL = nil
+        }
     }
 
     init(reminder: EKReminder, fallbackDate: Date) {
@@ -32,6 +45,8 @@ struct Entry {
         isAllDay = components?.hour == nil
         title = reminder.title ?? "(no title)"
         isReminder = true
+        meetingURL = nil
+        contactURL = nil
     }
 }
 
@@ -88,7 +103,14 @@ struct Moment {
 
             let timeStr = entry.isAllDay ? "All day" : timeFormatter.string(from: entry.date)
             let kindStr = entry.isReminder ? colored(" [reminder]", .yellow) : ""
-            print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(entry.title)\(kindStr)")
+            let joinStr = entry.meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
+            let titleStr: String
+            if let contactURL = entry.contactURL {
+                titleStr = hyperlink(entry.title, url: contactURL)
+            } else {
+                titleStr = entry.title
+            }
+            print("  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(kindStr)\(joinStr)")
         }
     }
 
