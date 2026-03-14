@@ -66,9 +66,9 @@ struct Moment {
         timeFormatter.timeStyle = .short
         timeFormatter.dateStyle = .none
 
-        let entriesByDay = Dictionary(grouping: entries) { dateFormatter.string(from: $0.date) }
+        let entriesByDay = Dictionary(grouping: entries) { Calendar.current.startOfDay(for: $0.date) }
         for day in entriesByDay.keys.sorted() {
-            print("\n\(colored(day, .bold, .blue))")
+            print("\n\(colored(dateFormatter.string(from: day), .bold, .blue))")
             for entry in entriesByDay[day]! {
                 print(entry.format(timeFormatter: timeFormatter))
             }
