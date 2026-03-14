@@ -36,19 +36,19 @@ struct EntryFormattingTests {
         return Calendar.current.date(from: components)!
     }
 
-    @Test func `timed event`() {
+    @Test func timedEvent() {
         let entry = Entry(date: makeDate(hour: 14, minute: 30), isAllDay: false, title: "Team Meeting", type: .event(meetingURL: nil, locationURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  2:30 pm  Team Meeting")
     }
 
-    @Test func `all day event`() {
+    @Test func allDayEvent() {
         let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Public Holiday", type: .event(meetingURL: nil, locationURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  All day  Public Holiday")
     }
 
-    @Test func `event with meeting URL`() throws {
+    @Test func eventWithMeetingURL() throws {
         let url = try #require(URL(string: "https://meet.google.com/abc-defg-hij"))
         let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Standup", type: .event(meetingURL: url, locationURL: nil))
         let output = entry.format(timeFormatter: timeFormatter)
@@ -56,7 +56,7 @@ struct EntryFormattingTests {
         #expect(extractLinks(output) == [Link(url: "https://meet.google.com/abc-defg-hij", text: "[Join]")])
     }
 
-    @Test func `event with location`() throws {
+    @Test func eventWithLocation() throws {
         let url = try #require(URL(string: "maps://?q=1+Infinite+Loop"))
         let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Visit", type: .event(meetingURL: nil, locationURL: url))
         let output = entry.format(timeFormatter: timeFormatter)
@@ -70,7 +70,7 @@ struct EntryFormattingTests {
         #expect(output == "  10:00 am Buy milk [reminder]")
     }
 
-    @Test func `birthday with contact URL`() throws {
+    @Test func birthdayWithContactURL() throws {
         let url = try #require(URL(string: "addressbook://123"))
         let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's 30th Birthday", type: .birthday(contactURL: url))
         let output = entry.format(timeFormatter: timeFormatter)
@@ -78,7 +78,7 @@ struct EntryFormattingTests {
         #expect(extractLinks(output) == [Link(url: "addressbook://123", text: "Jane Smith's 30th Birthday")])
     }
 
-    @Test func `birthday without contact URL`() {
+    @Test func birthdayWithoutContactURL() {
         let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's Birthday", type: .birthday(contactURL: nil))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  All day  Jane Smith's Birthday 🎈")
