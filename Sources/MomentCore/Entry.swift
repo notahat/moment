@@ -2,7 +2,7 @@
 @preconcurrency import EventKit
 import Foundation
 
-public enum EntryType: Sendable {
+public enum EntryType: Equatable, Sendable {
     case event(meetingURL: URL?, locationURL: URL?)
     case reminder
     case birthday(contactURL: URL?)
@@ -15,10 +15,16 @@ public struct Entry: Sendable {
     public let type: EntryType
 
     public init(event: EKEvent) {
+        self.init(event: event, calendarType: event.calendar.type)
+    }
+
+    /// Separated from init(event:) so tests can pass a calendarType directly,
+    /// without needing to construct an EKCalendar with a specific type.
+    init(event: EKEvent, calendarType: EKCalendarType) {
         date = event.startDate
         isAllDay = event.isAllDay
         title = event.title ?? "(no title)"
-        if event.calendar.type == .birthday {
+        if calendarType == .birthday {
             type = .birthday(contactURL: event.url)
         } else {
             let locationURL = event.location.flatMap {
