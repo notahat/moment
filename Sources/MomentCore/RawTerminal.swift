@@ -36,6 +36,7 @@ public final class RawTerminal: @unchecked Sendable {
         }
         if n == 1 {
             switch buf[0] {
+            case 3: return .quit // Ctrl-C (ETX) — signal processing disabled in raw mode
             case 13, 10: return .enter
             case UInt8(ascii: "q"): return .quit
             case UInt8(ascii: "u"): return .undo
