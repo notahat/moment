@@ -24,8 +24,8 @@ public final class RawTerminal: @unchecked Sendable {
         var raw = originalTermios
         cfmakeraw(&raw)
         withUnsafeMutableBytes(of: &raw.c_cc) { ptr in
-            ptr[Int(VMIN)] = 1
-            ptr[Int(VTIME)] = 1 // 100ms timeout for escape sequences
+            ptr[Int(VMIN)] = 0 // Return immediately once VTIME elapses, even with no input
+            ptr[Int(VTIME)] = 1 // 100ms timeout
         }
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)
         atexit { tcsetattr(STDIN_FILENO, TCSAFLUSH, &savedTermios) }
