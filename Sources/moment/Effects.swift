@@ -2,7 +2,9 @@
 @preconcurrency import EventKit
 import MomentCore
 
-extension Moment {
+struct Effects {
+    private init() {} // Namespace only — not intended to be instantiated.
+
     static func handleEffect(_ effect: Effect, store: EKEventStore) {
         switch effect {
         case let .completeReminder(id):
@@ -14,7 +16,7 @@ extension Moment {
         }
     }
 
-    static func complete(id: String, store: EKEventStore) {
+    private static func complete(id: String, store: EKEventStore) {
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
         reminder.isCompleted = true
         do { try store.save(reminder, commit: true) } catch {
@@ -22,7 +24,7 @@ extension Moment {
         }
     }
 
-    static func uncomplete(id: String, store: EKEventStore) {
+    private static func uncomplete(id: String, store: EKEventStore) {
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
         reminder.isCompleted = false
         do { try store.save(reminder, commit: true) } catch {

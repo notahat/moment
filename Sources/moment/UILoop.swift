@@ -3,8 +3,10 @@
 import Foundation
 import MomentCore
 
-extension Moment {
-    static func runUILoop(entries: [Entry], store: EKEventStore) {
+struct UILoop {
+    private init() {} // Namespace only — not intended to be instantiated.
+
+    static func run(entries: [Entry], store: EKEventStore) {
         let terminal = RawTerminal()
         terminal.enterRawMode()
         terminal.hideCursor()
@@ -22,15 +24,15 @@ extension Moment {
 
         var state = AppState(entries: entries, selectedIndex: 0)
 
-        print(renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
+        print(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
 
         while true {
             let key = terminal.readKey()
             let (newState, effects) = state.handle(key: key)
             state = newState
-            print(renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
+            print(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
             for effect in effects {
-                handleEffect(effect, store: store)
+                Effects.handleEffect(effect, store: store)
             }
             if effects.contains(.exit) { break }
         }

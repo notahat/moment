@@ -6,13 +6,13 @@ import MomentCore
 @main
 struct Moment {
     static func main() async {
-        await requestAccess()
+        await Fetching.requestAccess()
 
         let now = Date()
         let end = Calendar.current.date(byAdding: .day, value: 7, to: now)!
         let store = EKEventStore()
-        let entries = await fetchEntries(store: store, from: now, to: end)
+        let entries = await Fetching.fetchEntries(store: store, from: now, to: end)
 
-        runUILoop(entries: entries, store: store)
+        UILoop.run(entries: entries, store: store)
     }
 }

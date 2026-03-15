@@ -11,31 +11,6 @@ private enum ControlByte {
     static let csi = UInt8(ascii: "[") // CSI introducer — follows ESC in arrow key sequences
 }
 
-/// Interprets raw bytes read from stdin as a key event. Exposed as a free function for testing.
-func interpretKey(_ buf: [UInt8], count n: Int) -> RawTerminal.Key {
-    if n >= 3, buf[0] == ControlByte.esc, buf[1] == ControlByte.csi {
-        switch buf[2] {
-        case UInt8(ascii: "A"): return .up
-        case UInt8(ascii: "B"): return .down
-        default: return .other
-        }
-    }
-
-    if n == 1 {
-        switch buf[0] {
-        case ControlByte.etx: return .quit // Ctrl-C, signal processing is disabled in raw mode
-        case ControlByte.cr, ControlByte.lf: return .enter
-        case UInt8(ascii: "q"): return .quit
-        case UInt8(ascii: "u"): return .undo
-        case UInt8(ascii: "k"): return .up
-        case UInt8(ascii: "j"): return .down
-        default: return .other
-        }
-    }
-
-    return .other
-}
-
 public final class RawTerminal: @unchecked Sendable {
     private var originalTermios = termios()
 
@@ -76,6 +51,31 @@ public final class RawTerminal: @unchecked Sendable {
         var buf = [UInt8](repeating: 0, count: 3)
         let n = read(STDIN_FILENO, &buf, 3)
         guard n > 0 else { return .other }
-        return interpretKey(buf, count: n)
+        return RawTerminal.interpretKey(buf, count: n)
+    }
+
+    /// Interprets raw bytes read from stdin as a key event. Exposed as a static method for testing.
+    static func interpretKey(_ buf: [UInt8], count n: Int) -> Key {
+        if n >= 3, buf[0] == ControlByte.esc, buf[1] == ControlByte.csi {
+            switch buf[2] {
+            case UInt8(ascii: "A"): return .up
+            case UInt8(ascii: "B"): return .down
+            default: return .other
+            }
+        }
+
+        if n == 1 {
+            switch buf[0] {
+            case ControlByte.etx: return .quit // Ctrl-C, signal processing is disabled in raw mode
+            case ControlByte.cr, ControlByte.lf: return .enter
+            case UInt8(ascii: "q"): return .quit
+            case UInt8(ascii: "u"): return .undo
+            case UInt8(ascii: "k"): return .up
+            case UInt8(ascii: "j"): return .down
+            default: return .other
+            }
+        }
+
+        return .other
     }
 }
