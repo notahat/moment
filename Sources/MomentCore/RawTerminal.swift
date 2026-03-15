@@ -3,6 +3,39 @@ import Foundation
 
 private nonisolated(unsafe) var savedTermios = termios()
 
+private enum ControlByte {
+    static let etx: UInt8 = 0x03 // Ctrl-C
+    static let lf: UInt8 = 0x0A // Line feed
+    static let cr: UInt8 = 0x0D // Carriage return
+    static let esc: UInt8 = 0x1B // Escape
+    static let csi = UInt8(ascii: "[") // CSI introducer — follows ESC in arrow key sequences
+}
+
+/// Pure function, exposed for testing.
+func interpretKey(_ buf: [UInt8], count n: Int) -> RawTerminal.Key {
+    if n >= 3, buf[0] == ControlByte.esc, buf[1] == ControlByte.csi {
+        switch buf[2] {
+        case UInt8(ascii: "A"): return .up
+        case UInt8(ascii: "B"): return .down
+        default: return .other
+        }
+    }
+
+    if n == 1 {
+        switch buf[0] {
+        case ControlByte.etx: return .quit // Ctrl-C, signal processing is disabled in raw mode
+        case ControlByte.cr, ControlByte.lf: return .enter
+        case UInt8(ascii: "q"): return .quit
+        case UInt8(ascii: "u"): return .undo
+        case UInt8(ascii: "k"): return .up
+        case UInt8(ascii: "j"): return .down
+        default: return .other
+        }
+    }
+
+    return .other
+}
+
 public final class RawTerminal: @unchecked Sendable {
     private var originalTermios = termios()
 
@@ -31,20 +64,6 @@ public final class RawTerminal: @unchecked Sendable {
         var buf = [UInt8](repeating: 0, count: 3)
         let n = read(STDIN_FILENO, &buf, 3)
         guard n > 0 else { return .other }
-        if n >= 3, buf[0] == 27, buf[1] == 91 {
-            return buf[2] == 65 ? .up : buf[2] == 66 ? .down : .other
-        }
-        if n == 1 {
-            switch buf[0] {
-            case 3: return .quit // Ctrl-C (ETX) — signal processing disabled in raw mode
-            case 13, 10: return .enter
-            case UInt8(ascii: "q"): return .quit
-            case UInt8(ascii: "u"): return .undo
-            case UInt8(ascii: "k"): return .up
-            case UInt8(ascii: "j"): return .down
-            default: return .other
-            }
-        }
-        return .other
+        return interpretKey(buf, count: n)
     }
 }
