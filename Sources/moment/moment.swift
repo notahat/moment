@@ -15,7 +15,11 @@ struct Moment {
 
         let terminal = RawTerminal()
         terminal.enterRawMode()
-        defer { terminal.exitRawMode() }
+        print("\u{001B}[?25l", terminator: "") // hide cursor
+        defer {
+            print("\u{001B}[?25h", terminator: "") // show cursor
+            terminal.exitRawMode()
+        }
 
         let timeFormatter = DateFormatter()
         timeFormatter.timeStyle = .short
