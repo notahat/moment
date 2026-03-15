@@ -84,10 +84,19 @@ struct Moment {
     }
 
     static func fetchReminders(store: EKEventStore, from start: Date, to end: Date) async -> [Entry] {
-        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: start, ending: end, calendars: nil)
+        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
+        let startOfDay = Calendar.current.startOfDay(for: start)
         return await withCheckedContinuation { continuation in
             store.fetchReminders(matching: predicate) { reminders in
-                continuation.resume(returning: (reminders ?? []).map { Entry(reminder: $0, fallbackDate: start) })
+                let entries = (reminders ?? []).compactMap { reminder -> Entry? in
+                    let entry = Entry(reminder: reminder, fallbackDate: start)
+                    // Include reminders with no due date, and those due within our window
+                    if reminder.dueDateComponents == nil {
+                        return entry
+                    }
+                    return entry.date >= startOfDay && entry.date <= end ? entry : nil
+                }
+                continuation.resume(returning: entries)
             }
         }
     }
