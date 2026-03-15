@@ -4,11 +4,11 @@ import Foundation
 
 public enum EntryType: Equatable, Sendable {
     case event(meetingURL: URL?, locationURL: URL?)
-    case reminder
+    case reminder(id: String)
     case birthday(contactURL: URL?)
 }
 
-public struct Entry: Sendable {
+public struct Entry: Equatable, Sendable {
     public let date: Date
     public let isAllDay: Bool
     public let title: String
@@ -42,7 +42,7 @@ public struct Entry: Sendable {
         date = components?.date ?? fallbackDate
         isAllDay = components?.hour == nil
         title = reminder.title ?? "(no title)"
-        type = .reminder
+        type = .reminder(id: reminder.calendarItemIdentifier)
     }
 
     public init(date: Date, isAllDay: Bool, title: String, type: EntryType) {
@@ -52,7 +52,8 @@ public struct Entry: Sendable {
         self.type = type
     }
 
-    public func format(timeFormatter: DateFormatter) -> String {
+    public func format(timeFormatter: DateFormatter, isSelected: Bool = false) -> String {
+        let prefix = isSelected ? "> " : "  "
         let timeStr = isAllDay ? "All day" : timeFormatter.string(from: date)
         let titleStr: String
         let suffixStr: String
@@ -69,6 +70,6 @@ public struct Entry: Sendable {
             titleStr = contactURL.map { hyperlink(title, url: $0) } ?? title
             suffixStr = " 🎈"
         }
-        return "  \(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(suffixStr)"
+        return "\(prefix)\(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(suffixStr)"
     }
 }

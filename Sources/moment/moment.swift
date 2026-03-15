@@ -10,13 +10,46 @@ struct Moment {
 
         let now = Date()
         let end = Calendar.current.date(byAdding: .day, value: 7, to: now)!
-        let entries = await fetchEntries(from: now, to: end)
+        let store = EKEventStore()
+        let entries = await fetchEntries(store: store, from: now, to: end)
 
         if entries.isEmpty {
             print("No events or reminders in the next 7 days.")
-        } else {
-            printEntries(entries)
+            return
         }
+
+        let terminal = RawTerminal()
+        terminal.enterRawMode()
+        defer { terminal.exitRawMode() }
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
+        timeFormatter.dateStyle = .none
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "EEEE d MMM yyyy"
+
+        var state = AppState(entries: entries, selectedIndex: 0)
+
+        print(render(state: state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
+
+        loop: while true {
+            let key = terminal.readKey()
+            let (newState, effects) = handle(key: key, state: state)
+            state = newState
+            print(render(state: state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
+            for effect in effects {
+                switch effect {
+                case let .completeReminder(id):
+                    complete(id: id, store: store)
+                case .exit:
+                    break loop
+                }
+            }
+        }
+
+        // Clear screen on exit
+        print("\u{001B}[2J\u{001B}[H", terminator: "")
     }
 
     static func requestAccess() async {
@@ -38,8 +71,7 @@ struct Moment {
         }
     }
 
-    static func fetchEntries(from start: Date, to end: Date) async -> [Entry] {
-        let store = EKEventStore()
+    static func fetchEntries(store: EKEventStore, from start: Date, to end: Date) async -> [Entry] {
         let events = fetchEvents(store: store, from: start, to: end)
         let reminders = await fetchReminders(store: store, from: start, to: end)
         let entries = events + reminders
@@ -60,20 +92,11 @@ struct Moment {
         }
     }
 
-    static func printEntries(_ entries: [Entry]) {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE d MMM yyyy"
-
-        let timeFormatter = DateFormatter()
-        timeFormatter.timeStyle = .short
-        timeFormatter.dateStyle = .none
-
-        let entriesByDay = Dictionary(grouping: entries) { Calendar.current.startOfDay(for: $0.date) }
-        for day in entriesByDay.keys.sorted() {
-            print("\n\(colored(dateFormatter.string(from: day), .bold, .blue))")
-            for entry in entriesByDay[day]! {
-                print(entry.format(timeFormatter: timeFormatter))
-            }
+    static func complete(id: String, store: EKEventStore) {
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+        reminder.isCompleted = true
+        do { try store.save(reminder, commit: true) } catch {
+            print("\nFailed to complete reminder: \(error)")
         }
     }
 }

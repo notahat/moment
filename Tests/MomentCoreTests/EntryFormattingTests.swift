@@ -65,7 +65,7 @@ struct EntryFormattingTests {
     }
 
     @Test func reminder() {
-        let entry = Entry(date: makeDate(hour: 10, minute: 0), isAllDay: false, title: "Buy milk", type: .reminder)
+        let entry = Entry(date: makeDate(hour: 10, minute: 0), isAllDay: false, title: "Buy milk", type: .reminder(id: "fake-id"))
         let output = stripANSI(entry.format(timeFormatter: timeFormatter))
         #expect(output == "  10:00 am Buy milk [reminder]")
     }
