@@ -22,7 +22,8 @@ public enum Effect: Equatable {
     case exit
 }
 
-private func applyUndo(state: inout AppState) -> (AppState, [Effect]) {
+private func applyUndo(state: AppState) -> (AppState, [Effect]) {
+    var state = state
     guard let action = state.undoStack.popLast() else {
         return (state, [])
     }
@@ -58,7 +59,7 @@ public func handle(key: RawTerminal.Key, state: AppState) -> (AppState, [Effect]
             : [.completeReminder(id: id)]
         return (state, effects)
     case .undo:
-        return applyUndo(state: &state)
+        return applyUndo(state: state)
     case .quit:
         return (state, [.exit])
     case .other:
