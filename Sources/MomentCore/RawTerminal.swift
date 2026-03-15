@@ -11,7 +11,7 @@ private enum ControlByte {
     static let csi = UInt8(ascii: "[") // CSI introducer — follows ESC in arrow key sequences
 }
 
-/// Pure function, exposed for testing.
+/// Interprets raw bytes read from stdin as a key event. Exposed as a free function for testing.
 func interpretKey(_ buf: [UInt8], count n: Int) -> RawTerminal.Key {
     if n >= 3, buf[0] == ControlByte.esc, buf[1] == ControlByte.csi {
         switch buf[2] {

@@ -51,25 +51,4 @@ public struct Entry: Equatable, Sendable {
         self.title = title
         self.type = type
     }
-
-    public func format(timeFormatter: DateFormatter, isSelected: Bool = false) -> String {
-        let prefix = isSelected ? "> " : "  "
-        let timeStr = isAllDay ? "All day" : timeFormatter.string(from: date)
-        let titleStr: String
-        let suffixStr: String
-        switch type {
-        case let .event(meetingURL, locationURL):
-            titleStr = title
-            let joinStr = meetingURL.map { " " + colored(hyperlink("[Join]", url: $0), .blue) } ?? ""
-            let mapStr = locationURL.map { " " + colored(hyperlink("[Map]", url: $0), .blue) } ?? ""
-            suffixStr = joinStr + mapStr
-        case .reminder:
-            titleStr = title
-            suffixStr = colored(" [reminder]", .yellow)
-        case let .birthday(contactURL):
-            titleStr = contactURL.map { hyperlink(title, url: $0) } ?? title
-            suffixStr = " 🎈"
-        }
-        return "\(prefix)\(colored(timeStr.padding(toLength: 8, withPad: " ", startingAt: 0), .dim)) \(titleStr)\(suffixStr)"
-    }
 }
