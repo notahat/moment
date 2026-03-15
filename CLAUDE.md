@@ -30,6 +30,14 @@ struct Fetching {
 
 This makes call sites self-documenting (`Fetching.fetchEntries(...)`) and allows private static methods for implementation details.
 
+## Function design
+
+Break functions into meaningful chunks at logical boundaries, not at arbitrary line counts. A good signal that a function needs splitting is when you find yourself writing comments to label what each block does — that's a sign the blocks want to be named functions instead.
+
+Avoid extracting trivial one-liners into helpers unless they're called in multiple places or form part of a coherent set of named operations.
+
+Within a file, order functions so the public entry point comes first, with private helpers below in call-tree order — things further down the call tree go further down the file. This lets the file read top-down from high-level to detail.
+
 ## Concurrency
 
 Use Swift 6 concurrency (async/await, `Sendable`, actors). Do not downgrade to Swift 5 concurrency mode. `Entry` and `EntryType` are marked `Sendable` to satisfy Swift 6 requirements.
