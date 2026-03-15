@@ -15,9 +15,9 @@ struct Moment {
 
         let terminal = RawTerminal()
         terminal.enterRawMode()
-        print("\u{001B}[?25l", terminator: "") // hide cursor
+        terminal.hideCursor()
         defer {
-            print("\u{001B}[?25h", terminator: "") // show cursor
+            terminal.showCursor()
             terminal.exitRawMode()
         }
 
@@ -49,8 +49,7 @@ struct Moment {
             }
         }
 
-        // Clear screen on exit
-        print("\u{001B}[2J\u{001B}[H", terminator: "")
+        terminal.clearScreen()
     }
 
     static func requestAccess() async {

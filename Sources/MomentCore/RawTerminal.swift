@@ -60,6 +60,18 @@ public final class RawTerminal: @unchecked Sendable {
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios)
     }
 
+    public func hideCursor() {
+        print("\u{001B}[?25l", terminator: "")
+    }
+
+    public func showCursor() {
+        print("\u{001B}[?25h", terminator: "")
+    }
+
+    public func clearScreen() {
+        print("\u{001B}[2J\u{001B}[H", terminator: "")
+    }
+
     public func readKey() -> Key {
         var buf = [UInt8](repeating: 0, count: 3)
         let n = read(STDIN_FILENO, &buf, 3)
