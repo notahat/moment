@@ -22,6 +22,20 @@ public enum Effect: Equatable {
     case exit
 }
 
+private func applyUndo(state: inout AppState) -> (AppState, [Effect]) {
+    guard let action = state.undoStack.popLast() else {
+        return (state, [])
+    }
+    switch action {
+    case let .reminderCompleted(entry, atIndex):
+        guard case let .reminder(id) = entry.type else { return (state, []) }
+        let insertAt = min(atIndex, state.entries.count)
+        state.entries.insert(entry, at: insertAt)
+        state.selectedIndex = insertAt
+        return (state, [.uncompleteReminder(id: id)])
+    }
+}
+
 public func handle(key: RawTerminal.Key, state: AppState) -> (AppState, [Effect]) {
     var state = state
     switch key {
@@ -44,17 +58,7 @@ public func handle(key: RawTerminal.Key, state: AppState) -> (AppState, [Effect]
             : [.completeReminder(id: id)]
         return (state, effects)
     case .undo:
-        guard let action = state.undoStack.popLast() else {
-            return (state, [])
-        }
-        switch action {
-        case let .reminderCompleted(entry, atIndex):
-            guard case let .reminder(id) = entry.type else { return (state, []) }
-            let insertAt = min(atIndex, state.entries.count)
-            state.entries.insert(entry, at: insertAt)
-            state.selectedIndex = insertAt
-            return (state, [.uncompleteReminder(id: id)])
-        }
+        return applyUndo(state: &state)
     case .quit:
         return (state, [.exit])
     case .other:
