@@ -11,6 +11,6 @@ public func render(state: AppState, dateFormatter: DateFormatter, timeFormatter:
             i += 1
         }
     }
-    out += "\r\n\(colored("↑/↓/j/k navigate   Enter complete reminder   q quit", .dim))\r\n"
+    out += "\r\n\(colored("↑/↓/j/k navigate   Enter complete   u undo   q quit", .dim))\r\n"
     return out
 }

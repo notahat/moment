@@ -6,7 +6,7 @@ private nonisolated(unsafe) var savedTermios = termios()
 public final class RawTerminal: @unchecked Sendable {
     private var originalTermios = termios()
 
-    public enum Key: Equatable { case up, down, enter, quit, other }
+    public enum Key: Equatable { case up, down, enter, quit, undo, other }
 
     public init() {}
 
@@ -38,6 +38,7 @@ public final class RawTerminal: @unchecked Sendable {
             switch buf[0] {
             case 13, 10: return .enter
             case UInt8(ascii: "q"): return .quit
+            case UInt8(ascii: "u"): return .undo
             case UInt8(ascii: "k"): return .up
             case UInt8(ascii: "j"): return .down
             default: return .other

@@ -72,4 +72,70 @@ struct AppStateTests {
         #expect(newState == state)
         #expect(effects == [.exit])
     }
+
+    // MARK: - Undo
+
+    @Test func completingReminderPushesToUndoStack() {
+        let reminder = makeReminder(id: "r1")
+        let state = AppState(entries: [reminder, makeEvent()], selectedIndex: 0)
+        let (newState, _) = handle(key: .enter, state: state)
+        #expect(newState.undoStack == [.reminderCompleted(entry: reminder, atIndex: 0)])
+    }
+
+    @Test func undoWithEmptyStackIsNoOp() {
+        let state = AppState(entries: [makeEvent()])
+        let (newState, effects) = handle(key: .undo, state: state)
+        #expect(newState == state)
+        #expect(effects == [])
+    }
+
+    @Test func undoReInsertsEntryAtOriginalIndex() {
+        let reminder = makeReminder(id: "r1")
+        let event = makeEvent()
+        var state = AppState(entries: [reminder, event], selectedIndex: 0)
+        (state, _) = handle(key: .enter, state: state)
+        let (newState, _) = handle(key: .undo, state: state)
+        #expect(newState.entries == [reminder, event])
+        #expect(newState.selectedIndex == 0)
+        #expect(newState.undoStack.isEmpty)
+    }
+
+    @Test func undoEmitsUncompleteReminderEffect() {
+        var state = AppState(entries: [makeReminder(id: "r1"), makeEvent()], selectedIndex: 0)
+        (state, _) = handle(key: .enter, state: state)
+        let (_, effects) = handle(key: .undo, state: state)
+        #expect(effects == [.uncompleteReminder(id: "r1")])
+    }
+
+    @Test func multipleCompletionsThenUndoInReverseOrder() {
+        let r1 = makeReminder(day: 17, id: "r1")
+        let r2 = makeReminder(day: 18, id: "r2")
+        var state = AppState(entries: [r1, r2], selectedIndex: 0)
+        (state, _) = handle(key: .enter, state: state) // complete r1
+        (state, _) = handle(key: .enter, state: state) // complete r2
+        #expect(state.undoStack.count == 2)
+
+        var effects: [Effect]
+        (state, effects) = handle(key: .undo, state: state) // undo r2
+        #expect(state.entries == [r2])
+        #expect(effects == [.uncompleteReminder(id: "r2")])
+
+        (state, effects) = handle(key: .undo, state: state) // undo r1
+        #expect(state.entries == [r1, r2])
+        #expect(effects == [.uncompleteReminder(id: "r1")])
+        #expect(state.undoStack.isEmpty)
+    }
+
+    @Test func completeUndoCompleteAgainIsCorrect() {
+        let reminder = makeReminder(id: "r1")
+        var state = AppState(entries: [reminder, makeEvent()], selectedIndex: 0)
+        var effects: [Effect]
+        (state, effects) = handle(key: .enter, state: state)
+        #expect(effects == [.completeReminder(id: "r1")])
+        (state, effects) = handle(key: .undo, state: state)
+        #expect(effects == [.uncompleteReminder(id: "r1")])
+        (state, effects) = handle(key: .enter, state: state)
+        #expect(effects == [.completeReminder(id: "r1")])
+        #expect(state.undoStack.count == 1)
+    }
 }
