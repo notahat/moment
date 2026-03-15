@@ -23,7 +23,7 @@ struct UILoop {
         terminal.hideCursor()
 
         let refreshSignal = RefreshSignal()
-        let stopObserver = await startObserver(store: store, refreshSignal: refreshSignal)
+        let stopObserver = await startObserver(refreshSignal: refreshSignal)
 
         defer {
             stopObserver()
@@ -38,13 +38,13 @@ struct UILoop {
     /// Starts a background thread with a running RunLoop, which EventKit needs to detect
     /// changes from the system. Registers an EKEventStoreChanged observer on that thread,
     /// and returns a closure that stops the thread and removes the observer.
-    private static func startObserver(store: EKEventStore, refreshSignal: RefreshSignal) async -> () -> Void {
+    private static func startObserver(refreshSignal: RefreshSignal) async -> () -> Void {
         await withCheckedContinuation { continuation in
             Thread.detachNewThread {
                 let cfRunLoop = CFRunLoopGetCurrent()!
                 let port = Port()
                 NotificationCenter.default.addObserver(
-                    forName: .EKEventStoreChanged, object: store, queue: nil,
+                    forName: .EKEventStoreChanged, object: nil, queue: nil,
                 ) { _ in
                     Task { await refreshSignal.signal() }
                 }
