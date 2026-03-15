@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+VERSION=${1:?Usage: script/release <version>  e.g. script/release 0.2.0}
+TAG="v$VERSION"
+
+echo "==> Running tests..."
+swift test --quiet
+
+echo "==> Pushing main..."
+git push origin main
+
+echo "==> Creating GitHub release $TAG..."
+gh release create "$TAG" --title "$TAG" --generate-notes
+
+echo "==> Computing SHA256 of release tarball..."
+TARBALL_URL="https://github.com/notahat/moment/archive/${TAG}.tar.gz"
+SHA256=$(curl -sL "$TARBALL_URL" | shasum -a 256 | awk '{print $1}')
+echo "    SHA256: $SHA256"
+
+echo "==> Updating Homebrew formula..."
+FORMULA="class Moment < Formula
+  desc \"Command-line tool to list calendar events and reminders for the next 7 days\"
+  homepage \"https://github.com/notahat/moment\"
+  url \"https://github.com/notahat/moment/archive/${TAG}.tar.gz\"
+  sha256 \"${SHA256}\"
+  license \"MIT\"
+
+  depends_on xcode: [\"16.0\", :build]
+  depends_on :macos
+
+  def install
+    system \"swift\", \"build\", \"--configuration\", \"release\", \"--disable-sandbox\"
+    bin.install \".build/release/moment\"
+  end
+
+  test do
+    # Just verify the binary runs (it will fail gracefully without calendar access)
+    assert_match \"access\", shell_output(\"#{bin}/moment 2>&1\", 1)
+  end
+end
+"
+
+CURRENT_SHA=$(gh api repos/notahat/homebrew-moment/contents/Formula/moment.rb --jq '.sha')
+jq -n \
+  --arg message "Update moment to ${TAG}" \
+  --arg sha "$CURRENT_SHA" \
+  --arg content "$(printf '%s' "$FORMULA" | base64)" \
+  '{message: $message, sha: $sha, content: $content}' | \
+  gh api repos/notahat/homebrew-moment/contents/Formula/moment.rb \
+    --method PUT \
+    --input -
+
+echo "==> Done! Released $TAG"
