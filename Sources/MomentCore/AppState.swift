@@ -1,37 +1,43 @@
 import Foundation
 
 public enum UndoAction: Equatable, Sendable {
-    case reminderCompleted(entry: Entry, atIndex: Int)
+    case reminderCompleted(entry: Entry)
 }
 
 public struct AppState: Equatable {
     public var entries: [Entry]
-    public var selectedIndex: Int
+    public var selectedID: String?
     public var undoStack: [UndoAction]
 
-    public init(entries: [Entry], selectedIndex: Int = 0, undoStack: [UndoAction] = []) {
+    public init(entries: [Entry], selectedID: String? = nil, undoStack: [UndoAction] = []) {
         self.entries = entries
-        self.selectedIndex = selectedIndex
         self.undoStack = undoStack
+        if let id = selectedID, entries.contains(where: { $0.id == id }) {
+            self.selectedID = id
+        } else {
+            self.selectedID = entries.first?.id
+        }
     }
 
     public func handle(key: RawTerminal.Key) -> (AppState, [Effect]) {
         var state = self
         switch key {
         case .up:
-            state.selectedIndex = max(0, state.selectedIndex - 1)
+            if let i = entries.firstIndex(where: { $0.id == selectedID }), i > 0 {
+                state.selectedID = entries[i - 1].id
+            }
             return (state, [])
         case .down:
-            state.selectedIndex = min(state.entries.count - 1, state.selectedIndex + 1)
+            if let i = entries.firstIndex(where: { $0.id == selectedID }), i < entries.count - 1 {
+                state.selectedID = entries[i + 1].id
+            }
             return (state, [])
         case .enter:
-            guard case let .reminder(id) = state.entries[state.selectedIndex].type else {
-                return (state, [])
-            }
-            let completedEntry = state.entries[state.selectedIndex]
-            state.undoStack.append(.reminderCompleted(entry: completedEntry, atIndex: state.selectedIndex))
-            state.entries.remove(at: state.selectedIndex)
-            state.selectedIndex = min(state.selectedIndex, max(0, state.entries.count - 1))
+            guard let i = entries.firstIndex(where: { $0.id == selectedID }) else { return (state, []) }
+            guard case let .reminder(id) = entries[i].type else { return (state, []) }
+            state.undoStack.append(.reminderCompleted(entry: entries[i]))
+            state.entries.remove(at: i)
+            state.selectedID = state.entries.isEmpty ? nil : state.entries[min(i, state.entries.count - 1)].id
             return (state, [.completeReminder(id: id)])
         case .undo:
             return state.applyUndo()
@@ -44,15 +50,13 @@ public struct AppState: Equatable {
 
     private func applyUndo() -> (AppState, [Effect]) {
         var state = self
-        guard let action = state.undoStack.popLast() else {
-            return (state, [])
-        }
+        guard let action = state.undoStack.popLast() else { return (state, []) }
         switch action {
-        case let .reminderCompleted(entry, atIndex):
+        case let .reminderCompleted(entry):
             guard case let .reminder(id) = entry.type else { return (state, []) }
-            let insertAt = min(atIndex, state.entries.count)
+            let insertAt = state.entries.firstIndex(where: { $0.date > entry.date }) ?? state.entries.count
             state.entries.insert(entry, at: insertAt)
-            state.selectedIndex = insertAt
+            state.selectedID = entry.id
             return (state, [.uncompleteReminder(id: id)])
         }
     }

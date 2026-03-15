@@ -37,20 +37,20 @@ struct EntryFormattingTests {
     }
 
     @Test func timedEvent() {
-        let entry = Entry(date: makeDate(hour: 14, minute: 30), isAllDay: false, title: "Team Meeting", type: .event(meetingURL: nil, locationURL: nil))
+        let entry = Entry(id: "e1", date: makeDate(hour: 14, minute: 30), isAllDay: false, title: "Team Meeting", type: .event(meetingURL: nil, locationURL: nil))
         let output = stripANSI(Renderer.renderEntry(entry, timeFormatter: timeFormatter))
         #expect(output == "  2:30 pm  Team Meeting")
     }
 
     @Test func allDayEvent() {
-        let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Public Holiday", type: .event(meetingURL: nil, locationURL: nil))
+        let entry = Entry(id: "e1", date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Public Holiday", type: .event(meetingURL: nil, locationURL: nil))
         let output = stripANSI(Renderer.renderEntry(entry, timeFormatter: timeFormatter))
         #expect(output == "  All day  Public Holiday")
     }
 
     @Test func eventWithMeetingURL() throws {
         let url = try #require(URL(string: "https://meet.google.com/abc-defg-hij"))
-        let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Standup", type: .event(meetingURL: url, locationURL: nil))
+        let entry = Entry(id: "e1", date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Standup", type: .event(meetingURL: url, locationURL: nil))
         let output = Renderer.renderEntry(entry, timeFormatter: timeFormatter)
         #expect(stripANSI(output) == "  9:00 am  Standup [Join]")
         #expect(extractLinks(output) == [Link(url: "https://meet.google.com/abc-defg-hij", text: "[Join]")])
@@ -58,28 +58,28 @@ struct EntryFormattingTests {
 
     @Test func eventWithLocation() throws {
         let url = try #require(URL(string: "maps://?q=1+Infinite+Loop"))
-        let entry = Entry(date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Visit", type: .event(meetingURL: nil, locationURL: url))
+        let entry = Entry(id: "e1", date: makeDate(hour: 9, minute: 0), isAllDay: false, title: "Visit", type: .event(meetingURL: nil, locationURL: url))
         let output = Renderer.renderEntry(entry, timeFormatter: timeFormatter)
         #expect(stripANSI(output) == "  9:00 am  Visit [Map]")
         #expect(extractLinks(output) == [Link(url: "maps://?q=1+Infinite+Loop", text: "[Map]")])
     }
 
     @Test func reminder() {
-        let entry = Entry(date: makeDate(hour: 10, minute: 0), isAllDay: false, title: "Buy milk", type: .reminder(id: "fake-id"))
+        let entry = Entry(id: "r1", date: makeDate(hour: 10, minute: 0), isAllDay: false, title: "Buy milk", type: .reminder(id: "r1"))
         let output = stripANSI(Renderer.renderEntry(entry, timeFormatter: timeFormatter))
         #expect(output == "  10:00 am Buy milk [reminder]")
     }
 
     @Test func birthdayWithContactURL() throws {
         let url = try #require(URL(string: "addressbook://123"))
-        let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's 30th Birthday", type: .birthday(contactURL: url))
+        let entry = Entry(id: "b1", date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's 30th Birthday", type: .birthday(contactURL: url))
         let output = Renderer.renderEntry(entry, timeFormatter: timeFormatter)
         #expect(stripANSI(output) == "  All day  Jane Smith's 30th Birthday 🎈")
         #expect(extractLinks(output) == [Link(url: "addressbook://123", text: "Jane Smith's 30th Birthday")])
     }
 
     @Test func birthdayWithoutContactURL() {
-        let entry = Entry(date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's Birthday", type: .birthday(contactURL: nil))
+        let entry = Entry(id: "b1", date: makeDate(hour: 0, minute: 0), isAllDay: true, title: "Jane Smith's Birthday", type: .birthday(contactURL: nil))
         let output = stripANSI(Renderer.renderEntry(entry, timeFormatter: timeFormatter))
         #expect(output == "  All day  Jane Smith's Birthday 🎈")
     }

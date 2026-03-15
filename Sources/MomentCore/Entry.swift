@@ -9,6 +9,7 @@ public enum EntryType: Equatable, Sendable {
 }
 
 public struct Entry: Equatable, Sendable {
+    public let id: String
     public let date: Date
     public let isAllDay: Bool
     public let title: String
@@ -21,6 +22,7 @@ public struct Entry: Equatable, Sendable {
     /// Separated from init(event:) so tests can pass a calendarType directly,
     /// without needing to construct an EKCalendar with a specific type.
     init(event: EKEvent, calendarType: EKCalendarType) {
+        id = event.calendarItemIdentifier
         date = event.startDate
         isAllDay = event.isAllDay
         title = event.title ?? "(no title)"
@@ -38,6 +40,7 @@ public struct Entry: Equatable, Sendable {
     }
 
     public init(reminder: EKReminder, fallbackDate: Date) {
+        id = reminder.calendarItemIdentifier
         let components = reminder.dueDateComponents
         date = components?.date ?? fallbackDate
         isAllDay = components?.hour == nil
@@ -45,7 +48,8 @@ public struct Entry: Equatable, Sendable {
         type = .reminder(id: reminder.calendarItemIdentifier)
     }
 
-    public init(date: Date, isAllDay: Bool, title: String, type: EntryType) {
+    public init(id: String, date: Date, isAllDay: Bool, title: String, type: EntryType) {
+        self.id = id
         self.date = date
         self.isAllDay = isAllDay
         self.title = title

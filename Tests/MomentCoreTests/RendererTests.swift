@@ -39,28 +39,28 @@ struct RendererTests {
     }
 
     @Test func selectedEntryHasCursorPrefix() {
-        let entry = Entry(date: makeDate(day: 17), isAllDay: false, title: "Buy milk", type: .reminder(id: "r1"))
-        let state = AppState(entries: [entry], selectedIndex: 0)
+        let entry = Entry(id: "r1", date: makeDate(day: 17), isAllDay: false, title: "Buy milk", type: .reminder(id: "r1"))
+        let state = AppState(entries: [entry])
         let output = stripANSI(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter))
         #expect(output.contains("> "))
     }
 
     @Test func nonSelectedEntryHasSpacePrefix() {
         let entries = [
-            Entry(date: makeDate(day: 17), isAllDay: false, title: "Buy milk", type: .reminder(id: "r1")),
-            Entry(date: makeDate(day: 17, hour: 11), isAllDay: false, title: "Meeting", type: .event(meetingURL: nil, locationURL: nil)),
+            Entry(id: "r1", date: makeDate(day: 17), isAllDay: false, title: "Buy milk", type: .reminder(id: "r1")),
+            Entry(id: "e1", date: makeDate(day: 17, hour: 11), isAllDay: false, title: "Meeting", type: .event(meetingURL: nil, locationURL: nil)),
         ]
-        let state = AppState(entries: entries, selectedIndex: 0)
+        let state = AppState(entries: entries)
         let output = stripANSI(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter))
         #expect(output.contains("  11:00 am Meeting"))
     }
 
     @Test func entriesGroupedByDay() throws {
         let entries = [
-            Entry(date: makeDate(day: 17), isAllDay: false, title: "First Day Event", type: .event(meetingURL: nil, locationURL: nil)),
-            Entry(date: makeDate(day: 18), isAllDay: false, title: "Second Day Event", type: .event(meetingURL: nil, locationURL: nil)),
+            Entry(id: "e1", date: makeDate(day: 17), isAllDay: false, title: "First Day Event", type: .event(meetingURL: nil, locationURL: nil)),
+            Entry(id: "e2", date: makeDate(day: 18), isAllDay: false, title: "Second Day Event", type: .event(meetingURL: nil, locationURL: nil)),
         ]
-        let state = AppState(entries: entries, selectedIndex: 0)
+        let state = AppState(entries: entries)
         let output = stripANSI(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter))
         let firstRange = try #require(output.range(of: "17 Mar 2026"))
         let secondRange = try #require(output.range(of: "18 Mar 2026"))

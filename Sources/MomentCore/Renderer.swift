@@ -11,12 +11,10 @@ public struct Renderer {
             out += "\r\nNo events or reminders in the next 7 days.\r\n"
         } else {
             let entriesByDay = Dictionary(grouping: state.entries) { Calendar.current.startOfDay(for: $0.date) }
-            var i = 0
             for day in entriesByDay.keys.sorted() {
                 out += "\r\n\(Styling.applyStyle(dateFormatter.string(from: day), .bold, .blue))\r\n"
                 for entry in entriesByDay[day]! {
-                    out += renderEntry(entry, timeFormatter: timeFormatter, isSelected: i == state.selectedIndex) + "\r\n"
-                    i += 1
+                    out += renderEntry(entry, timeFormatter: timeFormatter, isSelected: entry.id == state.selectedID) + "\r\n"
                 }
             }
         }

@@ -59,7 +59,7 @@ struct UILoop {
     }
 
     private static func runLoop(terminal: RawTerminal, store: EKEventStore, refreshSignal: RefreshSignal) async {
-        var state = await AppState(entries: fetchCurrentEntries(store: store), selectedIndex: 0)
+        var state = await AppState(entries: fetchCurrentEntries(store: store))
         render(state)
 
         while true {
@@ -92,7 +92,7 @@ struct UILoop {
     private static func handleRefresh(state: AppState, store: EKEventStore, refreshSignal: RefreshSignal) async -> AppState? {
         guard await refreshSignal.consume() else { return nil }
         let newEntries = await fetchCurrentEntries(store: store)
-        return AppState(entries: newEntries, selectedIndex: min(state.selectedIndex, max(0, newEntries.count - 1)))
+        return AppState(entries: newEntries, selectedID: state.selectedID, undoStack: state.undoStack)
     }
 
     private static func fetchCurrentEntries(store: EKEventStore) async -> [Entry] {
