@@ -13,11 +13,6 @@ struct Moment {
         let store = EKEventStore()
         let entries = await fetchEntries(store: store, from: now, to: end)
 
-        if entries.isEmpty {
-            print("No events or reminders in the next 7 days.")
-            return
-        }
-
         let terminal = RawTerminal()
         terminal.enterRawMode()
         defer { terminal.exitRawMode() }

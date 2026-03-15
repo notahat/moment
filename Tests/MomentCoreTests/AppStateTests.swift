@@ -52,11 +52,11 @@ struct AppStateTests {
         #expect(effects == [.completeReminder(id: "r1")])
     }
 
-    @Test func enterOnReminderWhenLastEntryAlsoRequestsExit() {
+    @Test func enterOnLastReminderLeavesEntriesEmpty() {
         let state = AppState(entries: [makeReminder(id: "r1")], selectedIndex: 0)
         let (newState, effects) = handle(key: .enter, state: state)
         #expect(newState.entries.isEmpty)
-        #expect(effects == [.completeReminder(id: "r1"), .exit])
+        #expect(effects == [.completeReminder(id: "r1")])
     }
 
     @Test func enterOnEventDoesNothing() {

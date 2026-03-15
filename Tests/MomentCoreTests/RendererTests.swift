@@ -32,6 +32,12 @@ struct RendererTests {
         return Calendar.current.date(from: components)!
     }
 
+    @Test func emptyStateShowsNoEntriesMessage() {
+        let state = AppState(entries: [])
+        let output = stripANSI(render(state: state, dateFormatter: dateFormatter, timeFormatter: timeFormatter))
+        #expect(output.contains("No events or reminders in the next 7 days."))
+    }
+
     @Test func selectedEntryHasCursorPrefix() {
         let entry = Entry(date: makeDate(day: 17), isAllDay: false, title: "Buy milk", type: .reminder(id: "r1"))
         let state = AppState(entries: [entry], selectedIndex: 0)

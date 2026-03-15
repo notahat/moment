@@ -54,9 +54,7 @@ public func handle(key: RawTerminal.Key, state: AppState) -> (AppState, [Effect]
         state.undoStack.append(.reminderCompleted(entry: completedEntry, atIndex: state.selectedIndex))
         state.entries.remove(at: state.selectedIndex)
         state.selectedIndex = min(state.selectedIndex, max(0, state.entries.count - 1))
-        let effects: [Effect] = state.entries.isEmpty
-            ? [.completeReminder(id: id), .exit]
-            : [.completeReminder(id: id)]
+        let effects: [Effect] = [.completeReminder(id: id)]
         return (state, effects)
     case .undo:
         return applyUndo(state: state)
