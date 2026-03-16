@@ -14,7 +14,7 @@ private enum ControlByte {
 public final class RawTerminal: @unchecked Sendable {
     private var originalTermios = termios()
 
-    public enum Key: Equatable { case up, down, enter, quit, undo, other }
+    public enum Key: Equatable { case up, down, enter, escape, backspace, character(Character), other }
 
     public init() {}
 
@@ -66,12 +66,11 @@ public final class RawTerminal: @unchecked Sendable {
 
         if n == 1 {
             switch buf[0] {
-            case ControlByte.etx: return .quit // Ctrl-C, signal processing is disabled in raw mode
+            case ControlByte.etx: return .character("\u{03}") // Ctrl-C, signal processing is disabled in raw mode
             case ControlByte.cr, ControlByte.lf: return .enter
-            case UInt8(ascii: "q"): return .quit
-            case UInt8(ascii: "u"): return .undo
-            case UInt8(ascii: "k"): return .up
-            case UInt8(ascii: "j"): return .down
+            case ControlByte.esc: return .escape
+            case 0x7F: return .backspace
+            case 0x20 ... 0x7E: return .character(Character(UnicodeScalar(buf[0])))
             default: return .other
             }
         }

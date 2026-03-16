@@ -75,7 +75,7 @@ struct AppStateTests {
 
     @Test func quitReturnsExitEffect() {
         let state = AppState(entries: [makeEvent(id: "e1")])
-        let (newState, effects) = state.handle(key: .quit)
+        let (newState, effects) = state.handle(key: .character("q"))
         #expect(newState == state)
         #expect(effects == [.exit])
     }
@@ -91,7 +91,7 @@ struct AppStateTests {
 
     @Test func undoWithEmptyStackIsNoOp() {
         let state = AppState(entries: [makeEvent(id: "e1")])
-        let (newState, effects) = state.handle(key: .undo)
+        let (newState, effects) = state.handle(key: .character("u"))
         #expect(newState == state)
         #expect(effects == [])
     }
@@ -101,7 +101,7 @@ struct AppStateTests {
         let event = makeEvent(id: "e1") // hour 11 — sorts after reminder
         var state = AppState(entries: [reminder, event])
         (state, _) = state.handle(key: .enter)
-        let (newState, _) = state.handle(key: .undo)
+        let (newState, _) = state.handle(key: .character("u"))
         #expect(newState.entries == [reminder, event])
         #expect(newState.selectedID == "r1")
         #expect(newState.undoStack.isEmpty)
@@ -110,7 +110,7 @@ struct AppStateTests {
     @Test func undoEmitsUncompleteReminderEffect() {
         var state = AppState(entries: [makeReminder(id: "r1"), makeEvent(id: "e1")])
         (state, _) = state.handle(key: .enter)
-        let (_, effects) = state.handle(key: .undo)
+        let (_, effects) = state.handle(key: .character("u"))
         #expect(effects == [.uncompleteReminder(id: "r1")])
     }
 
@@ -123,11 +123,11 @@ struct AppStateTests {
         #expect(state.undoStack.count == 2)
 
         var effects: [Effect]
-        (state, effects) = state.handle(key: .undo) // undo r2
+        (state, effects) = state.handle(key: .character("u")) // undo r2
         #expect(state.entries == [r2])
         #expect(effects == [.uncompleteReminder(id: "r2")])
 
-        (state, effects) = state.handle(key: .undo) // undo r1
+        (state, effects) = state.handle(key: .character("u")) // undo r1
         #expect(state.entries == [r1, r2])
         #expect(effects == [.uncompleteReminder(id: "r1")])
         #expect(state.undoStack.isEmpty)
@@ -139,7 +139,7 @@ struct AppStateTests {
         var effects: [Effect]
         (state, effects) = state.handle(key: .enter)
         #expect(effects == [.completeReminder(id: "r1")])
-        (state, effects) = state.handle(key: .undo)
+        (state, effects) = state.handle(key: .character("u"))
         #expect(effects == [.uncompleteReminder(id: "r1")])
         (state, effects) = state.handle(key: .enter)
         #expect(effects == [.completeReminder(id: "r1")])

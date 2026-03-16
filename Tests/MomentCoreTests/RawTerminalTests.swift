@@ -18,28 +18,40 @@ struct RawTerminalTests {
         #expect(RawTerminal.interpretKey([0x0A], count: 1) == .enter)
     }
 
-    @Test func ctrlCQuits() {
-        #expect(RawTerminal.interpretKey([0x03], count: 1) == .quit)
+    @Test func ctrlCIsCharacter() {
+        #expect(RawTerminal.interpretKey([0x03], count: 1) == .character("\u{03}"))
     }
 
-    @Test func qQuits() {
-        #expect(RawTerminal.interpretKey([UInt8(ascii: "q")], count: 1) == .quit)
+    @Test func qIsCharacter() {
+        #expect(RawTerminal.interpretKey([UInt8(ascii: "q")], count: 1) == .character("q"))
     }
 
-    @Test func uUndoes() {
-        #expect(RawTerminal.interpretKey([UInt8(ascii: "u")], count: 1) == .undo)
+    @Test func uIsCharacter() {
+        #expect(RawTerminal.interpretKey([UInt8(ascii: "u")], count: 1) == .character("u"))
     }
 
-    @Test func kMovesUp() {
-        #expect(RawTerminal.interpretKey([UInt8(ascii: "k")], count: 1) == .up)
+    @Test func kIsCharacter() {
+        #expect(RawTerminal.interpretKey([UInt8(ascii: "k")], count: 1) == .character("k"))
     }
 
-    @Test func jMovesDown() {
-        #expect(RawTerminal.interpretKey([UInt8(ascii: "j")], count: 1) == .down)
+    @Test func jIsCharacter() {
+        #expect(RawTerminal.interpretKey([UInt8(ascii: "j")], count: 1) == .character("j"))
     }
 
-    @Test func unknownByteIsOther() {
-        #expect(RawTerminal.interpretKey([UInt8(ascii: "x")], count: 1) == .other)
+    @Test func escapeKey() {
+        #expect(RawTerminal.interpretKey([0x1B], count: 1) == .escape)
+    }
+
+    @Test func backspaceKey() {
+        #expect(RawTerminal.interpretKey([0x7F], count: 1) == .backspace)
+    }
+
+    @Test func nIsCharacter() {
+        #expect(RawTerminal.interpretKey([UInt8(ascii: "n")], count: 1) == .character("n"))
+    }
+
+    @Test func printableCharacterIsCharacter() {
+        #expect(RawTerminal.interpretKey([UInt8(ascii: "x")], count: 1) == .character("x"))
     }
 
     @Test func unknownEscapeSequenceIsOther() {

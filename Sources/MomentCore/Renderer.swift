@@ -18,8 +18,17 @@ public struct Renderer {
                 }
             }
         }
-        out += "\r\n\(Styling.applyStyle("↑/↓/j/k navigate   Enter complete   u undo   q quit", .dim))\r\n"
+        out += renderFooter(state.mode)
         return out
+    }
+
+    private static func renderFooter(_ mode: AppMode) -> String {
+        switch mode {
+        case .browsing:
+            "\r\n\(Styling.applyStyle("↑/↓/j/k navigate   Enter complete   u undo   n new   q quit", .dim))\r\n"
+        case let .addingReminder(text):
+            "\r\nNew reminder: \(text)|\r\n\(Styling.applyStyle("Enter confirm   Esc cancel", .dim))\r\n"
+        }
     }
 
     /// Renders a single entry as a terminal line, including time, title, and type-specific

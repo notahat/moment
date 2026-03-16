@@ -60,15 +60,22 @@ struct UILoop {
 
     private static func runLoop(terminal: RawTerminal, store: EKEventStore, refreshSignal: RefreshSignal) async {
         var state = await AppState(entries: fetchCurrentEntries(store: store))
+        var pendingSelectionID: String?
         render(state)
 
         while true {
             let (newState, effects) = readInput(from: terminal, state: state)
             state = newState
             render(state)
-            if handleEffects(effects, store: store) { break }
-            if let refreshedState = await handleRefresh(state: state, store: store, refreshSignal: refreshSignal) {
+            let (shouldExit, followUps) = handleEffects(effects, store: store)
+            for followUp in followUps {
+                state = state.applying(followUp: followUp)
+                if case let .reminderAdded(id) = followUp { pendingSelectionID = id }
+            }
+            if shouldExit { break }
+            if let refreshedState = await handleRefresh(state: state, store: store, refreshSignal: refreshSignal, selectID: pendingSelectionID) {
                 state = refreshedState
+                pendingSelectionID = nil
                 render(state)
             }
         }
@@ -82,17 +89,20 @@ struct UILoop {
         print(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
     }
 
-    private static func handleEffects(_ effects: [Effect], store: EKEventStore) -> Bool {
+    private static func handleEffects(_ effects: [Effect], store: EKEventStore) -> (shouldExit: Bool, followUps: [Effect]) {
+        var followUps: [Effect] = []
         for effect in effects {
-            Effects.handleEffect(effect, store: store)
+            if let followUp = Effects.handleEffect(effect, store: store) {
+                followUps.append(followUp)
+            }
         }
-        return effects.contains(.exit)
+        return (effects.contains(.exit), followUps)
     }
 
-    private static func handleRefresh(state: AppState, store: EKEventStore, refreshSignal: RefreshSignal) async -> AppState? {
+    private static func handleRefresh(state: AppState, store: EKEventStore, refreshSignal: RefreshSignal, selectID: String? = nil) async -> AppState? {
         guard await refreshSignal.consume() else { return nil }
         let newEntries = await fetchCurrentEntries(store: store)
-        return AppState(entries: newEntries, selectedID: state.selectedID, undoStack: state.undoStack)
+        return AppState(entries: newEntries, selectedID: selectID ?? state.selectedID, undoStack: state.undoStack)
     }
 
     private static func fetchCurrentEntries(store: EKEventStore) async -> [Entry] {
