@@ -27,9 +27,9 @@ struct Session {
         }
     }
 
-    /// Rebuilds state from a fresh EventKit fetch, preserving selection and undo stack.
+    /// Rebuilds state from a fresh EventKit fetch, preserving selection, undo stack, and redo stack.
     mutating func refresh(entries: [Entry]) {
-        state = AppState(entries: entries, selectedID: state.selectedID, undoStack: state.undoStack)
+        state = AppState(entries: entries, selectedID: state.selectedID, undoStack: state.undoStack, redoStack: state.redoStack)
     }
 
     private mutating func handleBrowsingKey(_ key: RawTerminal.Key) -> Bool {
@@ -41,6 +41,7 @@ struct Session {
             switch c {
             case "q", "\u{03}": return true
             case "u": undo(); return false
+            case "r": redo(); return false
             case "k": state = state.moveUp(); return false
             case "j": state = state.moveDown(); return false
             case "n": state = state.startAddReminder(); return false
@@ -80,20 +81,24 @@ struct Session {
     }
 
     private mutating func addReminder(title: String) {
+        guard let entry = createEKReminder(title: title, date: Date()) else { return }
+        state = state.addReminder(entry: entry)
+    }
+
+    private func createEKReminder(title: String, date: Date) -> Entry? {
         let reminder = EKReminder(eventStore: store)
         reminder.title = title
-        guard let calendar = store.defaultCalendarForNewReminders() else { return }
+        guard let calendar = store.defaultCalendarForNewReminders() else { return nil }
         reminder.calendar = calendar
-        let dueDateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        let dueDateComponents = Calendar.current.dateComponents([.year, .month, .day], from: date)
         reminder.dueDateComponents = dueDateComponents
         do { try store.save(reminder, commit: true) } catch {
             print("\nFailed to add reminder: \(error)")
-            return
+            return nil
         }
         let id = reminder.calendarItemIdentifier
-        let date = Calendar.current.date(from: dueDateComponents) ?? Date()
-        let entry = Entry(id: id, date: date, isAllDay: false, title: title, type: .reminder(id: id))
-        state = state.addReminder(entry: entry)
+        let resolvedDate = Calendar.current.date(from: dueDateComponents) ?? date
+        return Entry(id: id, date: resolvedDate, isAllDay: false, title: title, type: .reminder(id: id))
     }
 
     private mutating func undo() {
@@ -107,12 +112,30 @@ struct Session {
             do { try store.save(reminder, commit: true) } catch {
                 print("\nFailed to uncomplete reminder: \(error)")
             }
-        case let .reminderAdded(id):
-            state = state.undoAddReminder(id: id)
+        case let .reminderAdded(entry):
+            guard case let .reminder(id) = entry.type else { return }
+            state = state.undoAddReminder(entry: entry)
             guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
             do { try store.remove(reminder, commit: true) } catch {
                 print("\nFailed to delete reminder: \(error)")
             }
+        }
+    }
+
+    private mutating func redo() {
+        guard let action = state.redoStack.last else { return }
+        switch action {
+        case let .reminderCompleted(entry):
+            guard case let .reminder(id) = entry.type else { return }
+            state = state.redoCompleteReminder(entry: entry)
+            guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+            reminder.isCompleted = true
+            do { try store.save(reminder, commit: true) } catch {
+                print("\nFailed to complete reminder: \(error)")
+            }
+        case let .reminderAdded(entry):
+            guard let newEntry = createEKReminder(title: entry.title, date: entry.date) else { return }
+            state = state.redoAddReminder(entry: newEntry)
         }
     }
 }

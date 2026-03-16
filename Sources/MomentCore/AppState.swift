@@ -7,7 +7,7 @@ public enum AppMode: Equatable, Sendable {
 
 public enum UndoAction: Equatable, Sendable {
     case reminderCompleted(entry: Entry)
-    case reminderAdded(id: String)
+    case reminderAdded(entry: Entry)
 }
 
 /// The complete UI state of the app.
@@ -27,6 +27,9 @@ public struct AppState: Equatable {
     /// Actions that can be undone, in order from oldest to most recent.
     public var undoStack: [UndoAction]
 
+    /// Actions that can be redone, in order from oldest to most recent.
+    public var redoStack: [UndoAction]
+
     /// Whether the user is browsing or composing a new reminder title.
     public var mode: AppMode
 
@@ -36,9 +39,10 @@ public struct AppState: Equatable {
     }
 
     /// Creates a new state. If `selectedID` is not found in `entries`, defaults to the first entry.
-    public init(entries: [Entry], selectedID: String? = nil, undoStack: [UndoAction] = [], mode: AppMode = .browsing) {
+    public init(entries: [Entry], selectedID: String? = nil, undoStack: [UndoAction] = [], redoStack: [UndoAction] = [], mode: AppMode = .browsing) {
         self.entries = entries
         self.undoStack = undoStack
+        self.redoStack = redoStack
         self.mode = mode
         if let id = selectedID, entries.contains(where: { $0.id == id }) {
             self.selectedID = id
@@ -64,11 +68,12 @@ public struct AppState: Equatable {
     }
 
     /// Removes the reminder with the given ID from `entries`, pushes a `reminderCompleted`
-    /// action onto `undoStack`, and adjusts `selectedID` to the nearest remaining entry.
+    /// action onto `undoStack`, clears `redoStack`, and adjusts `selectedID` to the nearest remaining entry.
     public func completeReminder(id: String) -> AppState {
         guard let i = index(ofEntryWithID: id) else { return self }
         var s = self
         s.undoStack.append(.reminderCompleted(entry: entries[i]))
+        s.redoStack = []
         s.entries.remove(at: i)
         s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         return s
@@ -130,7 +135,8 @@ public struct AppState: Equatable {
         guard case .reminder = entry.type else { return self }
         var s = self
         s.mode = .browsing
-        s.undoStack.append(.reminderAdded(id: entry.id))
+        s.undoStack.append(.reminderAdded(entry: entry))
+        s.redoStack = []
         let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
         s.entries.insert(entry, at: insertAt)
         s.selectedID = entry.id
@@ -139,6 +145,7 @@ public struct AppState: Equatable {
 
     public func undoCompleteReminder(entry: Entry) -> AppState {
         var s = self
+        s.redoStack.append(.reminderCompleted(entry: entry))
         s.undoStack.removeLast()
         let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
         s.entries.insert(entry, at: insertAt)
@@ -146,13 +153,35 @@ public struct AppState: Equatable {
         return s
     }
 
-    public func undoAddReminder(id: String) -> AppState {
+    public func undoAddReminder(entry: Entry) -> AppState {
         var s = self
+        s.redoStack.append(.reminderAdded(entry: entry))
         s.undoStack.removeLast()
-        if let i = s.index(ofEntryWithID: id) {
+        if let i = s.index(ofEntryWithID: entry.id) {
             s.entries.remove(at: i)
             s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         }
+        return s
+    }
+
+    public func redoCompleteReminder(entry: Entry) -> AppState {
+        var s = self
+        s.undoStack.append(.reminderCompleted(entry: entry))
+        s.redoStack.removeLast()
+        if let i = s.index(ofEntryWithID: entry.id) {
+            s.entries.remove(at: i)
+            s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
+        }
+        return s
+    }
+
+    public func redoAddReminder(entry: Entry) -> AppState {
+        var s = self
+        s.undoStack.append(.reminderAdded(entry: entry))
+        s.redoStack.removeLast()
+        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
+        s.entries.insert(entry, at: insertAt)
+        s.selectedID = entry.id
         return s
     }
 

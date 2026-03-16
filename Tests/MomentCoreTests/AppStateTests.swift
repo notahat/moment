@@ -126,7 +126,7 @@ struct AppStateTests {
         let newState = state.addReminder(entry: reminder)
         #expect(newState.entries == [reminder, event])
         #expect(newState.selectedID == "r-new")
-        #expect(newState.undoStack == [.reminderAdded(id: "r-new")])
+        #expect(newState.undoStack == [.reminderAdded(entry: reminder)])
         #expect(newState.mode == .browsing)
     }
 
@@ -148,9 +148,60 @@ struct AppStateTests {
         let event = makeEvent(id: "e1")
         var state = AppState(entries: [event])
         state = state.addReminder(entry: reminder)
-        let newState = state.undoAddReminder(id: "r1")
+        let newState = state.undoAddReminder(entry: reminder)
         #expect(!newState.entries.contains(where: { $0.id == "r1" }))
         #expect(newState.undoStack.isEmpty)
+    }
+
+    // MARK: - Redo
+
+    @Test func redoCompleteReminderRemovesItFromEntries() {
+        let reminder = makeReminder(id: "r1")
+        let event = makeEvent(id: "e1")
+        var state = AppState(entries: [reminder, event])
+        state = state.completeReminder(id: "r1")
+        state = state.undoCompleteReminder(entry: reminder)
+        let afterRedo = state.redoCompleteReminder(entry: reminder)
+        #expect(!afterRedo.entries.contains(where: { $0.id == "r1" }))
+        #expect(afterRedo.undoStack == [.reminderCompleted(entry: reminder)])
+        #expect(afterRedo.redoStack.isEmpty)
+    }
+
+    @Test func redoAddReminderReInsertsEntry() {
+        let reminder = makeReminder(id: "r1")
+        let event = makeEvent(id: "e1")
+        var state = AppState(entries: [event])
+        state = state.addReminder(entry: reminder)
+        state = state.undoAddReminder(entry: reminder)
+        let afterRedo = state.redoAddReminder(entry: reminder)
+        #expect(afterRedo.entries.contains(where: { $0.id == "r1" }))
+        #expect(afterRedo.undoStack == [.reminderAdded(entry: reminder)])
+        #expect(afterRedo.redoStack.isEmpty)
+    }
+
+    @Test func undoThenNewActionClearsRedoStack() {
+        let r1 = makeReminder(day: 17, id: "r1")
+        let r2 = makeReminder(day: 18, id: "r2")
+        var state = AppState(entries: [r1, r2])
+        state = state.completeReminder(id: "r1")
+        state = state.undoCompleteReminder(entry: r1)
+        #expect(!state.redoStack.isEmpty)
+        state = state.completeReminder(id: "r2")
+        #expect(state.redoStack.isEmpty)
+    }
+
+    @Test func redoStackPreservedThroughUndoRedo() {
+        let r1 = makeReminder(day: 17, id: "r1")
+        let r2 = makeReminder(day: 18, id: "r2")
+        var state = AppState(entries: [r1, r2])
+        state = state.completeReminder(id: "r1")
+        state = state.completeReminder(id: "r2")
+        state = state.undoCompleteReminder(entry: r2)
+        state = state.undoCompleteReminder(entry: r1)
+        #expect(state.redoStack.count == 2)
+        state = state.redoCompleteReminder(entry: r1)
+        #expect(state.redoStack.count == 1)
+        #expect(state.undoStack == [.reminderCompleted(entry: r1)])
     }
 
     @Test func multipleCompletionsThenUndoInReverseOrder() {
