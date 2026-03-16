@@ -15,6 +15,11 @@ private enum ControlByte {
     static let csi = UInt8(ascii: "[") // CSI introducer — follows ESC in arrow key sequences
 }
 
+/// Manages raw terminal I/O: switching in and out of raw mode, reading keystrokes,
+/// and issuing escape sequences to control the cursor and screen.
+///
+/// Escape sequences are exposed both as static string constants (for embedding in
+/// rendered output) and as instance methods (for direct imperative use).
 public final class RawTerminal: @unchecked Sendable {
     private var originalTermios = termios()
 

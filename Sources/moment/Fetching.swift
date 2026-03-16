@@ -3,6 +3,9 @@
 import Foundation
 import MomentCore
 
+/// Handles all EventKit access: requesting authorisation and fetching calendar entries.
+///
+/// Converts `EKEvent` and `EKReminder` objects into `Entry` values for display.
 struct Fetching {
     private init() {} // Namespace only — not intended to be instantiated.
 

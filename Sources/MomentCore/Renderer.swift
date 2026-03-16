@@ -1,5 +1,9 @@
 import Foundation
 
+/// Converts `AppState` into a terminal output string.
+///
+/// All output is built as a single string (starting with a clear-screen sequence)
+/// and written to stdout in one call, avoiding partial-render flicker.
 public struct Renderer {
     private init() {} // Namespace only — not intended to be instantiated.
 

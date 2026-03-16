@@ -1,5 +1,6 @@
 import Foundation
 
+/// Applies ANSI terminal styling to strings: colors, text attributes, and hyperlinks.
 public struct Styling {
     private init() {} // Namespace only — not intended to be instantiated.
 
