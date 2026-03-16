@@ -2,12 +2,18 @@
 @preconcurrency import EventKit
 import Foundation
 
+/// Discriminates the kind of calendar item an `Entry` represents.
+///
+/// - `event`: A regular calendar event. May carry a meeting join URL and/or a Maps location URL.
+/// - `reminder`: An incomplete reminder. Carries the EK identifier needed to mark it complete.
+/// - `birthday`: A birthday from a contact. May carry a deep link to the Contacts app.
 public enum EntryType: Equatable, Sendable {
     case event(meetingURL: URL?, locationURL: URL?)
     case reminder(id: String)
     case birthday(contactURL: URL?)
 }
 
+/// A single displayable item in the moment list — a calendar event, a reminder, or a birthday.
 public struct Entry: Equatable, Sendable {
     public let id: String
     public let date: Date

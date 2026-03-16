@@ -3,18 +3,9 @@
 import Foundation
 import MomentCore
 
-private actor RefreshSignal {
-    private var pending = false
-    func signal() {
-        pending = true
-    }
-
-    func consume() -> Bool {
-        defer { pending = false }; return pending
-    }
-}
-
-private actor ResizeSignal {
+/// A thread-safe boolean flag for communicating pending work between concurrent tasks.
+/// Signal sets the flag; consume reads and clears it atomically.
+private actor PendingSignal {
     private var pending = false
     func signal() {
         pending = true
@@ -33,12 +24,13 @@ struct UILoop {
         terminal.enterRawMode()
         terminal.hideCursor()
 
-        let refreshSignal = RefreshSignal()
-        let resizeSignal = ResizeSignal()
+        let refreshSignal = PendingSignal()
+        let resizeSignal = PendingSignal()
         let stopObserver = await startObserver(refreshSignal: refreshSignal)
         let sigwinchSource = makeResizeSource(resizeSignal: resizeSignal)
 
         defer {
+            terminal.clearScreen()
             sigwinchSource.cancel()
             stopObserver()
             terminal.resetCursorStyle()
@@ -47,10 +39,9 @@ struct UILoop {
         }
 
         await runLoop(terminal: terminal, store: store, refreshSignal: refreshSignal, resizeSignal: resizeSignal)
-        terminal.clearScreen()
     }
 
-    private static func makeResizeSource(resizeSignal: ResizeSignal) -> any DispatchSourceSignal {
+    private static func makeResizeSource(resizeSignal: PendingSignal) -> any DispatchSourceSignal {
         signal(SIGWINCH, SIG_IGN) // Suppress default disposition so DispatchSource receives it
         let source = DispatchSource.makeSignalSource(signal: SIGWINCH, queue: .global())
         source.setEventHandler { Task { await resizeSignal.signal() } }
@@ -61,7 +52,7 @@ struct UILoop {
     /// Starts a background thread with a running RunLoop, which EventKit needs to detect
     /// changes from the system. Registers an EKEventStoreChanged observer on that thread,
     /// and returns a closure that stops the thread and removes the observer.
-    private static func startObserver(refreshSignal: RefreshSignal) async -> () -> Void {
+    private static func startObserver(refreshSignal: PendingSignal) async -> () -> Void {
         await withCheckedContinuation { continuation in
             Thread.detachNewThread {
                 let cfRunLoop = CFRunLoopGetCurrent()!
@@ -81,7 +72,7 @@ struct UILoop {
         }
     }
 
-    private static func runLoop(terminal: RawTerminal, store: EKEventStore, refreshSignal: RefreshSignal, resizeSignal: ResizeSignal) async {
+    private static func runLoop(terminal: RawTerminal, store: EKEventStore, refreshSignal: PendingSignal, resizeSignal: PendingSignal) async {
         var session = await Session(store: store, entries: fetchCurrentEntries(store: store))
         render(session.state)
 

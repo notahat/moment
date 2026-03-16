@@ -80,6 +80,8 @@ public final class RawTerminal: @unchecked Sendable {
         print(RawTerminal.clearScreenSequence, terminator: "")
     }
 
+    /// Reads the next key from stdin, blocking for up to 100ms.
+    /// Returns `.other` if no key is received within the timeout.
     public func readKey() -> Key {
         var buf = [UInt8](repeating: 0, count: 3)
         let n = read(STDIN_FILENO, &buf, 3)

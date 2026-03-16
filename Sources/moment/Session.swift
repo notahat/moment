@@ -71,7 +71,7 @@ struct Session {
 
     private mutating func completeSelectedReminder() {
         guard let entry = state.selectedEntry, case let .reminder(id) = entry.type else { return }
-        state = state.completeReminder(id: entry.id)
+        state = state.completeReminder(id: id)
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
         reminder.isCompleted = true
         do { try store.save(reminder, commit: true) } catch {

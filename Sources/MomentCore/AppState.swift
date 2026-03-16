@@ -63,6 +63,8 @@ public struct AppState: Equatable {
         return s
     }
 
+    /// Removes the reminder with the given ID from `entries`, pushes a `reminderCompleted`
+    /// action onto `undoStack`, and adjusts `selectedID` to the nearest remaining entry.
     public func completeReminder(id: String) -> AppState {
         guard let i = index(ofEntryWithID: id) else { return self }
         var s = self

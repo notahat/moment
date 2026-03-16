@@ -37,6 +37,8 @@ struct Fetching {
         return store.events(matching: predicate).map { Entry(event: $0) }
     }
 
+    /// Fetches all incomplete reminders, filtered to those due within `start...end`.
+    /// Reminders with no due date are always included regardless of range.
     private static func fetchReminders(store: EKEventStore, from start: Date, to end: Date) async -> [Entry] {
         let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
         let startOfDay = Calendar.current.startOfDay(for: start)
