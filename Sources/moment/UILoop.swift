@@ -62,10 +62,15 @@ struct UILoop {
         var session = await Session(store: store, entries: fetchCurrentEntries(store: store))
         render(session.state)
 
-        while true {
-            if session.handle(key: terminal.readKey()) { break }
-            render(session.state)
-            if await refreshSignal.consume() {
+        var shouldExit = false
+        while !shouldExit {
+            // Handle keypresses, and re-render if necessary.
+            let previousState = session.state
+            shouldExit = session.handle(key: terminal.readKey())
+            if session.state != previousState { render(session.state) }
+
+            // Handle external changes, and re-render if necessary.
+            if !shouldExit, await refreshSignal.consume() {
                 await session.refresh(entries: fetchCurrentEntries(store: store))
                 render(session.state)
             }
