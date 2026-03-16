@@ -76,22 +76,24 @@ struct AppStateTests {
 
     @Test func startAddReminderEntersAddingMode() {
         let state = AppState(entries: [makeEvent(id: "e1")])
-        #expect(state.startAddReminder().mode == .addingReminder(text: ""))
+        #expect(state.startAddReminder().mode == .addingReminder(editor: LineEditor()))
     }
 
     @Test func cancelAddReminderReturnsToBrowsing() {
-        let state = AppState(entries: [], mode: .addingReminder(text: "Hello"))
+        let state = AppState(entries: [], mode: .addingReminder(editor: LineEditor(text: "Hello")))
         #expect(state.cancelAddReminder().mode == .browsing)
     }
 
-    @Test func appendCharacterAddsToText() {
-        let state = AppState(entries: [], mode: .addingReminder(text: "He"))
-        #expect(state.appendCharacter("y").mode == .addingReminder(text: "Hey"))
+    @Test func insertCharacterAddsToText() {
+        let state = AppState(entries: [], mode: .addingReminder(editor: LineEditor(text: "He")))
+        guard case let .addingReminder(editor) = state.insertCharacter("y").mode else { return }
+        #expect(editor.text == "Hey")
     }
 
-    @Test func deleteLastCharacterRemovesFromText() {
-        let state = AppState(entries: [], mode: .addingReminder(text: "Hey"))
-        #expect(state.deleteLastCharacter().mode == .addingReminder(text: "He"))
+    @Test func deleteBackwardRemovesFromText() {
+        let state = AppState(entries: [], mode: .addingReminder(editor: LineEditor(text: "Hey")))
+        guard case let .addingReminder(editor) = state.deleteBackward().mode else { return }
+        #expect(editor.text == "He")
     }
 
     @Test func addReminderInsertsEntryAndSelectsIt() {

@@ -6,7 +6,8 @@ public struct Renderer {
     /// Renders the full app state as a string to be printed to the terminal, including
     /// a grouped list of entries and a key bindings hint line.
     public static func renderAppState(_ state: AppState, dateFormatter: DateFormatter, timeFormatter: DateFormatter) -> String {
-        var out = "\u{001B}[2J\u{001B}[H" // clear screen, cursor home
+        var out = RawTerminal.clearScreenSequence
+
         if state.entries.isEmpty {
             out += "\r\nNo events or reminders in the next 7 days.\r\n"
         } else {
@@ -25,9 +26,17 @@ public struct Renderer {
     private static func renderFooter(_ mode: AppMode) -> String {
         switch mode {
         case .browsing:
-            "\r\n\(Styling.applyStyle("↑/↓/j/k navigate   Enter complete   u undo   n new   q quit", .dim))\r\n"
-        case let .addingReminder(text):
-            "\r\nNew reminder: \(text)|\r\n\(Styling.applyStyle("Enter confirm   Esc cancel", .dim))\r\n"
+            let hints = Styling.applyStyle("↑/↓/j/k navigate   Enter complete   u undo   n new   q quit", .dim)
+            return "\r\n\(hints)\r\n\(RawTerminal.resetCursorStyleSequence)\(RawTerminal.hideCursorSequence)"
+
+        case let .addingReminder(editor):
+            let hints = Styling.applyStyle("Enter confirm   Esc cancel   ←/→ move   ^A/^E line start/end   ^K delete to end   ^W delete word", .dim)
+            // DECSC is embedded in the input text at the cursor position; DECRC at the end
+            // restores the terminal cursor there — no row counting needed.
+            let showCursor = RawTerminal.setCursorStyleBarSequence
+                + RawTerminal.showCursorSequence
+                + RawTerminal.restoreCursorSequence
+            return "\r\nNew reminder: \(editor.textWithSaveCursor())\r\n\(hints)\r\n\(showCursor)"
         }
     }
 

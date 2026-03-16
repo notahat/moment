@@ -14,6 +14,17 @@ private actor RefreshSignal {
     }
 }
 
+private actor ResizeSignal {
+    private var pending = false
+    func signal() {
+        pending = true
+    }
+
+    func consume() -> Bool {
+        defer { pending = false }; return pending
+    }
+}
+
 struct UILoop {
     private init() {} // Namespace only — not intended to be instantiated.
 
@@ -23,16 +34,28 @@ struct UILoop {
         terminal.hideCursor()
 
         let refreshSignal = RefreshSignal()
+        let resizeSignal = ResizeSignal()
         let stopObserver = await startObserver(refreshSignal: refreshSignal)
+        let sigwinchSource = makeResizeSource(resizeSignal: resizeSignal)
 
         defer {
+            sigwinchSource.cancel()
             stopObserver()
+            terminal.resetCursorStyle()
             terminal.showCursor()
             terminal.exitRawMode()
         }
 
-        await runLoop(terminal: terminal, store: store, refreshSignal: refreshSignal)
+        await runLoop(terminal: terminal, store: store, refreshSignal: refreshSignal, resizeSignal: resizeSignal)
         terminal.clearScreen()
+    }
+
+    private static func makeResizeSource(resizeSignal: ResizeSignal) -> any DispatchSourceSignal {
+        signal(SIGWINCH, SIG_IGN) // Suppress default disposition so DispatchSource receives it
+        let source = DispatchSource.makeSignalSource(signal: SIGWINCH, queue: .global())
+        source.setEventHandler { Task { await resizeSignal.signal() } }
+        source.resume()
+        return source
     }
 
     /// Starts a background thread with a running RunLoop, which EventKit needs to detect
@@ -58,7 +81,7 @@ struct UILoop {
         }
     }
 
-    private static func runLoop(terminal: RawTerminal, store: EKEventStore, refreshSignal: RefreshSignal) async {
+    private static func runLoop(terminal: RawTerminal, store: EKEventStore, refreshSignal: RefreshSignal, resizeSignal: ResizeSignal) async {
         var session = await Session(store: store, entries: fetchCurrentEntries(store: store))
         render(session.state)
 
@@ -74,11 +97,17 @@ struct UILoop {
                 await session.refresh(entries: fetchCurrentEntries(store: store))
                 render(session.state)
             }
+
+            // Handle terminal resize — just re-render to redraw for the new dimensions.
+            if !shouldExit, await resizeSignal.consume() {
+                render(session.state)
+            }
         }
     }
 
     private static func render(_ state: AppState) {
         print(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter), terminator: "")
+        fflush(stdout)
     }
 
     private static func fetchCurrentEntries(store: EKEventStore) async -> [Entry] {

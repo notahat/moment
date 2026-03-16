@@ -23,7 +23,7 @@ struct Session {
     mutating func handle(key: RawTerminal.Key) -> Bool {
         switch state.mode {
         case .browsing: handleBrowsingKey(key)
-        case let .addingReminder(text): handleAddingKey(key, text: text)
+        case .addingReminder: handleAddingKey(key)
         }
     }
 
@@ -50,16 +50,23 @@ struct Session {
         }
     }
 
-    private mutating func handleAddingKey(_ key: RawTerminal.Key, text: String) -> Bool {
+    private mutating func handleAddingKey(_ key: RawTerminal.Key) -> Bool {
         switch key {
-        case .escape: state = state.cancelAddReminder(); return false
+        case .escape: state = state.cancelAddReminder()
         case .enter:
-            if !text.isEmpty { addReminder(title: text) }
-            return false
-        case .backspace: state = state.deleteLastCharacter(); return false
-        case let .character(c): state = state.appendCharacter(c); return false
-        default: return false
+            guard case let .addingReminder(editor) = state.mode, !editor.text.isEmpty else { break }
+            addReminder(title: editor.text)
+        case .backspace: state = state.deleteBackward()
+        case .left: state = state.moveCursorLeft()
+        case .right: state = state.moveCursorRight()
+        case .lineStart: state = state.moveCursorToStart()
+        case .lineEnd: state = state.moveCursorToEnd()
+        case .deleteToEnd: state = state.deleteToEnd()
+        case .deleteWordBackward: state = state.deleteWordBackward()
+        case let .character(c): state = state.insertCharacter(c)
+        default: break
         }
+        return false
     }
 
     private mutating func completeSelectedReminder() {

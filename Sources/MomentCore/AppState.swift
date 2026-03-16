@@ -2,7 +2,7 @@ import Foundation
 
 public enum AppMode: Equatable, Sendable {
     case browsing
-    case addingReminder(text: String)
+    case addingReminder(editor: LineEditor)
 }
 
 public enum UndoAction: Equatable, Sendable {
@@ -74,7 +74,7 @@ public struct AppState: Equatable {
 
     public func startAddReminder() -> AppState {
         var s = self
-        s.mode = .addingReminder(text: "")
+        s.mode = .addingReminder(editor: LineEditor())
         return s
     }
 
@@ -84,17 +84,43 @@ public struct AppState: Equatable {
         return s
     }
 
-    public func appendCharacter(_ c: Character) -> AppState {
-        guard case let .addingReminder(text) = mode else { return self }
-        var s = self
-        s.mode = .addingReminder(text: text + String(c))
-        return s
+    public func insertCharacter(_ c: Character) -> AppState {
+        transformEditor { $0.insert(c) }
     }
 
-    public func deleteLastCharacter() -> AppState {
-        guard case let .addingReminder(text) = mode else { return self }
+    public func deleteBackward() -> AppState {
+        transformEditor { $0.deleteBackward() }
+    }
+
+    public func moveCursorLeft() -> AppState {
+        transformEditor { $0.moveCursorLeft() }
+    }
+
+    public func moveCursorRight() -> AppState {
+        transformEditor { $0.moveCursorRight() }
+    }
+
+    public func moveCursorToStart() -> AppState {
+        transformEditor { $0.moveCursorToStart() }
+    }
+
+    public func moveCursorToEnd() -> AppState {
+        transformEditor { $0.moveCursorToEnd() }
+    }
+
+    public func deleteToEnd() -> AppState {
+        transformEditor { $0.deleteToEnd() }
+    }
+
+    public func deleteWordBackward() -> AppState {
+        transformEditor { $0.deleteWordBackward() }
+    }
+
+    private func transformEditor(_ transform: (inout LineEditor) -> Void) -> AppState {
+        guard case var .addingReminder(editor) = mode else { return self }
         var s = self
-        s.mode = .addingReminder(text: String(text.dropLast()))
+        transform(&editor)
+        s.mode = .addingReminder(editor: editor)
         return s
     }
 
