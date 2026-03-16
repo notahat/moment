@@ -41,6 +41,20 @@ struct Fetching {
 
 This makes call sites self-documenting (`Fetching.fetchEntries(...)`) and allows private static methods for implementation details.
 
+## Documentation
+
+Every type (struct, class, enum, actor) should have a doc comment explaining its responsibility. Focus on the *what and why*, not the *how* — the code itself shows how. A good type-level comment answers: what does this type own or represent, and what is it responsible for doing?
+
+```swift
+/// Converts `AppState` into a terminal output string.
+///
+/// All output is built as a single string (starting with a clear-screen sequence)
+/// and written to stdout in one call, avoiding partial-render flicker.
+public struct Renderer {
+```
+
+Methods only need doc comments when their behaviour is non-obvious from the name — e.g. when there are meaningful edge cases, side effects, or non-obvious parameter semantics worth calling out.
+
 ## Function design
 
 Break functions into meaningful chunks at logical boundaries, not at arbitrary line counts. A good signal that a function needs splitting is when you find yourself writing comments to label what each block does — that's a sign the blocks want to be named functions instead.
