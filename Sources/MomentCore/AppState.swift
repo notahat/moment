@@ -10,12 +10,32 @@ public enum UndoAction: Equatable, Sendable {
     case reminderAdded(id: String)
 }
 
+/// The complete UI state of the app.
+///
+/// All methods are pure: they return a new `AppState` with no side effects.
+/// EventKit work is handled by `Session`, which calls these methods to update state.
+///
+/// Entries are identified by ID throughout the public interface — index arithmetic
+/// is an internal implementation detail.
 public struct AppState: Equatable {
+    /// All calendar entries to display, sorted by date.
     public var entries: [Entry]
+
+    /// The ID of the currently highlighted entry, or `nil` if the list is empty.
     public var selectedID: String?
+
+    /// Actions that can be undone, in order from oldest to most recent.
     public var undoStack: [UndoAction]
+
+    /// Whether the user is browsing or composing a new reminder title.
     public var mode: AppMode
 
+    /// The currently highlighted entry, or `nil` if the list is empty.
+    public var selectedEntry: Entry? {
+        entries.first(where: { $0.id == selectedID })
+    }
+
+    /// Creates a new state. If `selectedID` is not found in `entries`, defaults to the first entry.
     public init(entries: [Entry], selectedID: String? = nil, undoStack: [UndoAction] = [], mode: AppMode = .browsing) {
         self.entries = entries
         self.undoStack = undoStack
@@ -27,119 +47,89 @@ public struct AppState: Equatable {
         }
     }
 
-    public func handle(key: RawTerminal.Key) -> (AppState, [Effect]) {
-        switch mode {
-        case .browsing:
-            handleBrowsingKey(key)
-        case let .addingReminder(text):
-            handleAddingKey(key, text: text)
+    public func moveUp() -> AppState {
+        var s = self
+        if let i = index(ofEntryWithID: selectedID), i > 0 {
+            s.selectedID = entries[i - 1].id
         }
+        return s
     }
 
-    private func handleBrowsingKey(_ key: RawTerminal.Key) -> (AppState, [Effect]) {
-        var state = self
-        switch key {
-        case .up:
-            if let i = entries.firstIndex(where: { $0.id == selectedID }), i > 0 {
-                state.selectedID = entries[i - 1].id
-            }
-            return (state, [])
-        case .down:
-            if let i = entries.firstIndex(where: { $0.id == selectedID }), i < entries.count - 1 {
-                state.selectedID = entries[i + 1].id
-            }
-            return (state, [])
-        case .enter:
-            guard let i = entries.firstIndex(where: { $0.id == selectedID }) else { return (state, []) }
-            guard case let .reminder(id) = entries[i].type else { return (state, []) }
-            state.undoStack.append(.reminderCompleted(entry: entries[i]))
-            state.entries.remove(at: i)
-            state.selectedID = state.entries.isEmpty ? nil : state.entries[min(i, state.entries.count - 1)].id
-            return (state, [.completeReminder(id: id)])
-        case let .character(c):
-            switch c {
-            case "q", "\u{03}": // q or Ctrl-C
-                return (state, [.exit])
-            case "u":
-                return state.applyUndo()
-            case "k":
-                if let i = entries.firstIndex(where: { $0.id == selectedID }), i > 0 {
-                    state.selectedID = entries[i - 1].id
-                }
-                return (state, [])
-            case "j":
-                if let i = entries.firstIndex(where: { $0.id == selectedID }), i < entries.count - 1 {
-                    state.selectedID = entries[i + 1].id
-                }
-                return (state, [])
-            case "n":
-                state.mode = .addingReminder(text: "")
-                return (state, [])
-            default:
-                return (state, [])
-            }
-        default:
-            return (state, [])
+    public func moveDown() -> AppState {
+        var s = self
+        if let i = index(ofEntryWithID: selectedID), i < entries.count - 1 {
+            s.selectedID = entries[i + 1].id
         }
+        return s
     }
 
-    private func handleAddingKey(_ key: RawTerminal.Key, text: String) -> (AppState, [Effect]) {
-        var state = self
-        switch key {
-        case .escape:
-            state.mode = .browsing
-            return (state, [])
-        case .enter:
-            state.mode = .browsing
-            return (state, text.isEmpty ? [] : [.addReminder(title: text)])
-        case .backspace:
-            state.mode = .addingReminder(text: String(text.dropLast()))
-            return (state, [])
-        case let .character(c):
-            state.mode = .addingReminder(text: text + String(c))
-            return (state, [])
-        default:
-            return (state, [])
-        }
+    public func completeReminder(id: String) -> AppState {
+        guard let i = index(ofEntryWithID: id) else { return self }
+        var s = self
+        s.undoStack.append(.reminderCompleted(entry: entries[i]))
+        s.entries.remove(at: i)
+        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
+        return s
     }
 
-    /// Applies a follow-up effect produced by EventKit back into the state machine.
-    public func applying(followUp: Effect) -> AppState {
-        var state = self
-        switch followUp {
-        case let .reminderAdded(id):
-            state.undoStack.append(.reminderAdded(id: id))
-        default:
-            break
-        }
-        return state
+    public func startAddReminder() -> AppState {
+        var s = self
+        s.mode = .addingReminder(text: "")
+        return s
     }
 
-    private func applyUndo() -> (AppState, [Effect]) {
-        var state = self
-        guard let action = state.undoStack.popLast() else { return (state, []) }
-        switch action {
-        case let .reminderCompleted(entry):
-            guard case let .reminder(id) = entry.type else { return (state, []) }
-            let insertAt = state.entries.firstIndex(where: { $0.date > entry.date }) ?? state.entries.count
-            state.entries.insert(entry, at: insertAt)
-            state.selectedID = entry.id
-            return (state, [.uncompleteReminder(id: id)])
-        case let .reminderAdded(id):
-            if let i = state.entries.firstIndex(where: { $0.id == id }) {
-                state.entries.remove(at: i)
-                state.selectedID = state.entries.isEmpty ? nil : state.entries[min(i, state.entries.count - 1)].id
-            }
-            return (state, [.deleteReminder(id: id)])
-        }
+    public func cancelAddReminder() -> AppState {
+        var s = self
+        s.mode = .browsing
+        return s
     }
-}
 
-public enum Effect: Equatable {
-    case completeReminder(id: String)
-    case uncompleteReminder(id: String)
-    case addReminder(title: String)
-    case reminderAdded(id: String) // Follow-up from EventKit after addReminder succeeds; no EventKit action.
-    case deleteReminder(id: String)
-    case exit
+    public func appendCharacter(_ c: Character) -> AppState {
+        guard case let .addingReminder(text) = mode else { return self }
+        var s = self
+        s.mode = .addingReminder(text: text + String(c))
+        return s
+    }
+
+    public func deleteLastCharacter() -> AppState {
+        guard case let .addingReminder(text) = mode else { return self }
+        var s = self
+        s.mode = .addingReminder(text: String(text.dropLast()))
+        return s
+    }
+
+    public func addReminder(entry: Entry) -> AppState {
+        guard case .reminder = entry.type else { return self }
+        var s = self
+        s.mode = .browsing
+        s.undoStack.append(.reminderAdded(id: entry.id))
+        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
+        s.entries.insert(entry, at: insertAt)
+        s.selectedID = entry.id
+        return s
+    }
+
+    public func undoCompleteReminder(entry: Entry) -> AppState {
+        var s = self
+        s.undoStack.removeLast()
+        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
+        s.entries.insert(entry, at: insertAt)
+        s.selectedID = entry.id
+        return s
+    }
+
+    public func undoAddReminder(id: String) -> AppState {
+        var s = self
+        s.undoStack.removeLast()
+        if let i = s.index(ofEntryWithID: id) {
+            s.entries.remove(at: i)
+            s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
+        }
+        return s
+    }
+
+    private func index(ofEntryWithID id: String?) -> Int? {
+        guard let id else { return nil }
+        return entries.firstIndex(where: { $0.id == id })
+    }
 }

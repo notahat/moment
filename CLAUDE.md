@@ -15,6 +15,17 @@ A macOS command-line tool that lists calendar events and reminders for the next 
 1. Run `swiftformat .`
 2. Run `swift test` and ensure all tests pass
 
+## Architecture
+
+`Session` owns both the `EKEventStore` and `AppState`. When the user takes an action:
+- `Session` performs any EventKit work
+- `Session` calls a pure transformation method on `AppState` to update state
+- `AppState` methods have no side effects
+
+**Prefer optimistic updates**: update `AppState` immediately rather than waiting for an `EKEventStoreChanged` refresh. The refresh will reconcile eventually, but the UI should feel instant.
+
+**Work with IDs, not indexes**: methods on `AppState` take and return entry IDs. Index lookups are an internal implementation detail of `AppState`, not part of its public interface.
+
 ## Code organisation
 
 Swift lacks namespaces. To group related functions, use a struct with a `private init()` to prevent instantiation:
