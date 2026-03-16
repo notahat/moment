@@ -50,6 +50,15 @@ struct AppStateTests {
         #expect(state.moveDown().selectedID == "e2")
     }
 
+    // MARK: - Initialisation
+
+    @Test func initWithInvalidSelectedIDDefaultsToFirst() {
+        let e1 = makeEvent(id: "e1")
+        let e2 = makeEvent(id: "e2")
+        let state = AppState(entries: [e1, e2], selectedID: "nonexistent")
+        #expect(state.selectedID == "e1")
+    }
+
     // MARK: - Complete Reminder
 
     @Test func completeReminderRemovesItFromEntries() {
@@ -64,6 +73,20 @@ struct AppStateTests {
         let state = AppState(entries: [reminder, makeEvent(id: "e1")])
         let newState = state.completeReminder(id: "r1")
         #expect(newState.undoStack == [.reminderCompleted(entry: reminder)])
+    }
+
+    @Test func completeSelectedReminderMovesSelectionToNextEntry() {
+        let r1 = makeReminder(id: "r1") // hour 10 — sorts before event
+        let e1 = makeEvent(id: "e1") // hour 11
+        let state = AppState(entries: [r1, e1], selectedID: "r1")
+        #expect(state.completeReminder(id: "r1").selectedID == "e1")
+    }
+
+    @Test func completeSelectedReminderMovesSelectionToPreviousWhenLast() {
+        let e1 = makeEvent(id: "e1") // day 17
+        let r1 = makeReminder(day: 18, id: "r1") // day 18 — sorts after e1
+        let state = AppState(entries: [e1, r1], selectedID: "r1")
+        #expect(state.completeReminder(id: "r1").selectedID == "e1")
     }
 
     @Test func completeLastReminderLeavesEntriesEmpty() {

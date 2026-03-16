@@ -55,6 +55,14 @@ struct RendererTests {
         #expect(output.contains("  11:00 am Meeting"))
     }
 
+    @Test func addingReminderModeShowsInputAndHints() {
+        let state = AppState(entries: [], mode: .addingReminder(editor: LineEditor(text: "Buy milk")))
+        let output = stripANSI(Renderer.renderAppState(state, dateFormatter: dateFormatter, timeFormatter: timeFormatter))
+        #expect(output.contains("New reminder: Buy milk"))
+        #expect(output.contains("Enter confirm"))
+        #expect(output.contains("Esc cancel"))
+    }
+
     @Test func entriesGroupedByDay() throws {
         let entries = [
             Entry(id: "e1", date: makeDate(day: 17), isAllDay: false, title: "First Day Event", type: .event(meetingURL: nil, locationURL: nil)),
