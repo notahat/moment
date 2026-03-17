@@ -9,8 +9,7 @@ import MomentCore
 struct Fetching {
     private init() {} // Namespace only — not intended to be instantiated.
 
-    static func requestAccess() async {
-        let store = EKEventStore()
+    static func requestAccess(store: EKEventStore) async {
         do {
             try await store.requestFullAccessToEvents()
             try await store.requestFullAccessToReminders()

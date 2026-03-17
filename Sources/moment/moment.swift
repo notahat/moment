@@ -6,10 +6,8 @@ import MomentCore
 @main
 struct Moment {
     static func main() async {
-        await Fetching.requestAccess()
-
         let store = EKEventStore()
-
+        await Fetching.requestAccess(store: store)
         await UILoop.run(store: store)
     }
 }
