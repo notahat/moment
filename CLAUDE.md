@@ -65,6 +65,8 @@ Avoid extracting trivial one-liners into helpers unless they're called in multip
 
 Within a file, order functions so the public entry point comes first, with private helpers below in call-tree order — things further down the call tree go further down the file. This lets the file read top-down from high-level to detail.
 
+Method names should start with a present-tense verb: `removeEntry`, `insertEntry`, `fetchEvents`. Avoid gerunds (`-ing` forms) like `removingEntry` or `insertingEntry`.
+
 ## Concurrency
 
 Use Swift 6 concurrency (async/await, `Sendable`, actors). Do not downgrade to Swift 5 concurrency mode. `Entry` and `EntryType` are marked `Sendable` to satisfy Swift 6 requirements.

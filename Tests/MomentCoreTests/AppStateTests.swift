@@ -20,6 +20,19 @@ struct AppStateTests {
         Entry(id: id, date: makeDate(day: day, hour: 10), isAllDay: false, title: "Buy milk", type: .reminder(id: id))
     }
 
+    func makeSnapshot(day: Int = 17, id: String = "reminder-1") -> ReminderSnapshot {
+        ReminderSnapshot(
+            id: id,
+            title: "Buy milk",
+            date: makeDate(day: day, hour: 10),
+            calendarIdentifier: "calendar-1",
+            notes: nil,
+            priority: 0,
+            dueDateComponents: nil,
+            url: nil,
+        )
+    }
+
     // MARK: - Navigation
 
     @Test func moveUpDecreasesSelectedIndex() {
@@ -134,16 +147,16 @@ struct AppStateTests {
 
     @Test func deleteReminderRemovesItFromEntries() {
         let state = AppState(entries: [makeReminder(id: "r1"), makeEvent(id: "e1")])
-        let newState = state.deleteReminder(id: "r1")
+        let newState = state.deleteReminder(snapshot: makeSnapshot(id: "r1"))
         #expect(newState.entries.count == 1)
         #expect(newState.entries[0].id == "e1")
     }
 
     @Test func deleteReminderPushesToUndoStack() {
-        let reminder = makeReminder(id: "r1")
-        let state = AppState(entries: [reminder, makeEvent(id: "e1")])
-        let newState = state.deleteReminder(id: "r1")
-        #expect(newState.undoStack == [.reminderDeleted(entry: reminder)])
+        let snapshot = makeSnapshot(id: "r1")
+        let state = AppState(entries: [makeReminder(id: "r1"), makeEvent(id: "e1")])
+        let newState = state.deleteReminder(snapshot: snapshot)
+        #expect(newState.undoStack == [.reminderDeleted(snapshot: snapshot)])
     }
 
     // MARK: - Undo
@@ -196,25 +209,25 @@ struct AppStateTests {
     }
 
     @Test func undoDeleteReminderReInsertsEntryAtOriginalPosition() {
-        let reminder = makeReminder(id: "r1") // hour 10
+        let snapshot = makeSnapshot(id: "r1") // hour 10
         let event = makeEvent(id: "e1") // hour 11 — sorts after reminder
-        let state = AppState(entries: [reminder, event])
-        let afterDelete = state.deleteReminder(id: "r1")
-        let afterUndo = afterDelete.undoDeleteReminder(entry: reminder)
-        #expect(afterUndo.entries == [reminder, event])
+        let state = AppState(entries: [snapshot.entry, event])
+        let afterDelete = state.deleteReminder(snapshot: snapshot)
+        let afterUndo = afterDelete.undoDeleteReminder(snapshot: snapshot)
+        #expect(afterUndo.entries == [snapshot.entry, event])
         #expect(afterUndo.selectedID == "r1")
         #expect(afterUndo.undoStack.isEmpty)
     }
 
     @Test func redoDeleteReminderRemovesItFromEntries() {
-        let reminder = makeReminder(id: "r1")
+        let snapshot = makeSnapshot(id: "r1")
         let event = makeEvent(id: "e1")
-        var state = AppState(entries: [reminder, event])
-        state = state.deleteReminder(id: "r1")
-        state = state.undoDeleteReminder(entry: reminder)
-        let afterRedo = state.redoDeleteReminder(entry: reminder)
+        var state = AppState(entries: [snapshot.entry, event])
+        state = state.deleteReminder(snapshot: snapshot)
+        state = state.undoDeleteReminder(snapshot: snapshot)
+        let afterRedo = state.redoDeleteReminder(snapshot: snapshot)
         #expect(!afterRedo.entries.contains(where: { $0.id == "r1" }))
-        #expect(afterRedo.undoStack == [.reminderDeleted(entry: reminder)])
+        #expect(afterRedo.undoStack == [.reminderDeleted(snapshot: snapshot)])
         #expect(afterRedo.redoStack.isEmpty)
     }
 

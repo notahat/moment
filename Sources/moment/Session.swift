@@ -83,8 +83,9 @@ struct Session {
 
     private mutating func deleteSelectedReminder() {
         guard let entry = state.selectedEntry, case let .reminder(id) = entry.type else { return }
-        state = state.deleteReminder(id: id)
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+        let snapshot = ReminderSnapshot(reminder: reminder, date: entry.date)
+        state = state.deleteReminder(snapshot: snapshot)
         do { try store.remove(reminder, commit: true) } catch {
             print("\nFailed to delete reminder: \(error)")
         }
@@ -96,19 +97,41 @@ struct Session {
     }
 
     private func createEKReminder(title: String, date: Date) -> Entry? {
-        let reminder = EKReminder(eventStore: store)
-        reminder.title = title
-        guard let calendar = store.defaultCalendarForNewReminders() else { return nil }
-        reminder.calendar = calendar
         let dueDateComponents = Calendar.current.dateComponents([.year, .month, .day], from: date)
-        reminder.dueDateComponents = dueDateComponents
+        let snapshot = ReminderSnapshot(
+            id: "",
+            title: title,
+            date: date,
+            calendarIdentifier: store.defaultCalendarForNewReminders()?.calendarIdentifier ?? "",
+            notes: nil,
+            priority: 0,
+            dueDateComponents: dueDateComponents,
+            url: nil,
+        )
+        return recreateEKReminder(from: snapshot)?.entry
+    }
+
+    /// Creates a new EKReminder from a snapshot and returns an updated snapshot with the new identifier.
+    /// Returns `nil` if the reminder could not be saved.
+    private func recreateEKReminder(from snapshot: ReminderSnapshot) -> ReminderSnapshot? {
+        let reminder = EKReminder(eventStore: store)
+        reminder.title = snapshot.title
+        reminder.notes = snapshot.notes
+        reminder.priority = snapshot.priority
+        reminder.dueDateComponents = snapshot.dueDateComponents
+        reminder.url = snapshot.url
+        let calendar = store.calendar(withIdentifier: snapshot.calendarIdentifier)
+            ?? store.defaultCalendarForNewReminders()
+        guard let calendar else { return nil }
+        reminder.calendar = calendar
         do { try store.save(reminder, commit: true) } catch {
-            print("\nFailed to add reminder: \(error)")
+            print("\nFailed to recreate reminder: \(error)")
             return nil
         }
-        let id = reminder.calendarItemIdentifier
-        let resolvedDate = Calendar.current.date(from: dueDateComponents) ?? date
-        return Entry(id: id, date: resolvedDate, isAllDay: false, title: title, type: .reminder(id: id))
+        let resolvedDate = snapshot.dueDateComponents.flatMap {
+            Calendar.current.date(from: $0)
+        } ?? snapshot.date
+        return ReminderSnapshot(reminder: reminder, date: resolvedDate)
     }
 
     private mutating func undo() {
@@ -129,9 +152,9 @@ struct Session {
             do { try store.remove(reminder, commit: true) } catch {
                 print("\nFailed to delete reminder: \(error)")
             }
-        case let .reminderDeleted(entry):
-            guard let newEntry = createEKReminder(title: entry.title, date: entry.date) else { return }
-            state = state.undoDeleteReminder(entry: newEntry)
+        case let .reminderDeleted(snapshot):
+            guard let restoredSnapshot = recreateEKReminder(from: snapshot) else { return }
+            state = state.undoDeleteReminder(snapshot: restoredSnapshot)
         }
     }
 
@@ -149,10 +172,9 @@ struct Session {
         case let .reminderAdded(entry):
             guard let newEntry = createEKReminder(title: entry.title, date: entry.date) else { return }
             state = state.redoAddReminder(entry: newEntry)
-        case let .reminderDeleted(entry):
-            guard case let .reminder(id) = entry.type else { return }
-            state = state.redoDeleteReminder(entry: entry)
-            guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+        case let .reminderDeleted(snapshot):
+            state = state.redoDeleteReminder(snapshot: snapshot)
+            guard let reminder = store.calendarItem(withIdentifier: snapshot.id) as? EKReminder else { return }
             do { try store.remove(reminder, commit: true) } catch {
                 print("\nFailed to delete reminder: \(error)")
             }

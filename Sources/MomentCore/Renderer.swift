@@ -30,7 +30,7 @@ public struct Renderer {
     private static func renderFooter(_ mode: AppMode) -> String {
         switch mode {
         case .browsing:
-            let hints = Styling.applyStyle("↑/↓/j/k navigate   Enter complete   u undo   r redo   n new   q quit", .dim)
+            let hints = Styling.applyStyle("↑/↓/j/k navigate   Enter complete   d delete   n new   u undo   r redo   q quit", .dim)
             return "\r\n\(hints)\r\n\(RawTerminal.resetCursorStyleSequence)\(RawTerminal.hideCursorSequence)"
 
         case let .addingReminder(editor):
