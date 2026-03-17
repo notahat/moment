@@ -55,6 +55,8 @@ public struct Renderer {
 
 Methods only need doc comments when their behaviour is non-obvious from the name — e.g. when there are meaningful edge cases, side effects, or non-obvious parameter semantics worth calling out.
 
+A good comment explains *why* the code is the way it is, not *what* it does — the code already shows what. If a comment just restates the code in prose, delete it.
+
 ## Function design
 
 Break functions into meaningful chunks at logical boundaries, not at arbitrary line counts. A good signal that a function needs splitting is when you find yourself writing comments to label what each block does — that's a sign the blocks want to be named functions instead.

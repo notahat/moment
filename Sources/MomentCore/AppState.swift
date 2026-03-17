@@ -8,6 +8,7 @@ public enum AppMode: Equatable, Sendable {
 public enum UndoAction: Equatable, Sendable {
     case reminderCompleted(entry: Entry)
     case reminderAdded(entry: Entry)
+    case reminderDeleted(entry: Entry)
 }
 
 /// The complete UI state of the app.
@@ -73,6 +74,16 @@ public struct AppState: Equatable {
         guard let i = index(ofEntryWithID: id) else { return self }
         var s = self
         s.undoStack.append(.reminderCompleted(entry: entries[i]))
+        s.redoStack = []
+        s.entries.remove(at: i)
+        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
+        return s
+    }
+
+    public func deleteReminder(id: String) -> AppState {
+        guard let i = index(ofEntryWithID: id) else { return self }
+        var s = self
+        s.undoStack.append(.reminderDeleted(entry: entries[i]))
         s.redoStack = []
         s.entries.remove(at: i)
         s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
@@ -164,6 +175,16 @@ public struct AppState: Equatable {
         return s
     }
 
+    public func undoDeleteReminder(entry: Entry) -> AppState {
+        var s = self
+        s.redoStack.append(.reminderDeleted(entry: entry))
+        s.undoStack.removeLast()
+        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
+        s.entries.insert(entry, at: insertAt)
+        s.selectedID = entry.id
+        return s
+    }
+
     public func redoCompleteReminder(entry: Entry) -> AppState {
         var s = self
         s.undoStack.append(.reminderCompleted(entry: entry))
@@ -172,6 +193,16 @@ public struct AppState: Equatable {
             s.entries.remove(at: i)
             s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         }
+        return s
+    }
+
+    public func redoDeleteReminder(entry: Entry) -> AppState {
+        guard let i = index(ofEntryWithID: entry.id) else { return self }
+        var s = self
+        s.undoStack.append(.reminderDeleted(entry: entry))
+        s.redoStack.removeLast()
+        s.entries.remove(at: i)
+        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         return s
     }
 

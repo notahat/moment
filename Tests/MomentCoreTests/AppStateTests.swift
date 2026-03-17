@@ -130,6 +130,22 @@ struct AppStateTests {
         #expect(newState.mode == .browsing)
     }
 
+    // MARK: - Delete Reminder
+
+    @Test func deleteReminderRemovesItFromEntries() {
+        let state = AppState(entries: [makeReminder(id: "r1"), makeEvent(id: "e1")])
+        let newState = state.deleteReminder(id: "r1")
+        #expect(newState.entries.count == 1)
+        #expect(newState.entries[0].id == "e1")
+    }
+
+    @Test func deleteReminderPushesToUndoStack() {
+        let reminder = makeReminder(id: "r1")
+        let state = AppState(entries: [reminder, makeEvent(id: "e1")])
+        let newState = state.deleteReminder(id: "r1")
+        #expect(newState.undoStack == [.reminderDeleted(entry: reminder)])
+    }
+
     // MARK: - Undo
 
     @Test func undoCompleteReminderReInsertsEntryAtOriginalPosition() {
@@ -176,6 +192,29 @@ struct AppStateTests {
         let afterRedo = state.redoAddReminder(entry: reminder)
         #expect(afterRedo.entries.contains(where: { $0.id == "r1" }))
         #expect(afterRedo.undoStack == [.reminderAdded(entry: reminder)])
+        #expect(afterRedo.redoStack.isEmpty)
+    }
+
+    @Test func undoDeleteReminderReInsertsEntryAtOriginalPosition() {
+        let reminder = makeReminder(id: "r1") // hour 10
+        let event = makeEvent(id: "e1") // hour 11 — sorts after reminder
+        let state = AppState(entries: [reminder, event])
+        let afterDelete = state.deleteReminder(id: "r1")
+        let afterUndo = afterDelete.undoDeleteReminder(entry: reminder)
+        #expect(afterUndo.entries == [reminder, event])
+        #expect(afterUndo.selectedID == "r1")
+        #expect(afterUndo.undoStack.isEmpty)
+    }
+
+    @Test func redoDeleteReminderRemovesItFromEntries() {
+        let reminder = makeReminder(id: "r1")
+        let event = makeEvent(id: "e1")
+        var state = AppState(entries: [reminder, event])
+        state = state.deleteReminder(id: "r1")
+        state = state.undoDeleteReminder(entry: reminder)
+        let afterRedo = state.redoDeleteReminder(entry: reminder)
+        #expect(!afterRedo.entries.contains(where: { $0.id == "r1" }))
+        #expect(afterRedo.undoStack == [.reminderDeleted(entry: reminder)])
         #expect(afterRedo.redoStack.isEmpty)
     }
 

@@ -45,6 +45,7 @@ struct Session {
             case "k": state = state.moveUp(); return false
             case "j": state = state.moveDown(); return false
             case "n": state = state.startAddReminder(); return false
+            case "d": deleteSelectedReminder(); return false
             default: return false
             }
         default: return false
@@ -77,6 +78,15 @@ struct Session {
         reminder.isCompleted = true
         do { try store.save(reminder, commit: true) } catch {
             print("\nFailed to complete reminder: \(error)")
+        }
+    }
+
+    private mutating func deleteSelectedReminder() {
+        guard let entry = state.selectedEntry, case let .reminder(id) = entry.type else { return }
+        state = state.deleteReminder(id: id)
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+        do { try store.remove(reminder, commit: true) } catch {
+            print("\nFailed to delete reminder: \(error)")
         }
     }
 
@@ -119,6 +129,9 @@ struct Session {
             do { try store.remove(reminder, commit: true) } catch {
                 print("\nFailed to delete reminder: \(error)")
             }
+        case let .reminderDeleted(entry):
+            guard let newEntry = createEKReminder(title: entry.title, date: entry.date) else { return }
+            state = state.undoDeleteReminder(entry: newEntry)
         }
     }
 
@@ -136,6 +149,13 @@ struct Session {
         case let .reminderAdded(entry):
             guard let newEntry = createEKReminder(title: entry.title, date: entry.date) else { return }
             state = state.redoAddReminder(entry: newEntry)
+        case let .reminderDeleted(entry):
+            guard case let .reminder(id) = entry.type else { return }
+            state = state.redoDeleteReminder(entry: entry)
+            guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+            do { try store.remove(reminder, commit: true) } catch {
+                print("\nFailed to delete reminder: \(error)")
+            }
         }
     }
 }

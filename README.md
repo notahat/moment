@@ -16,10 +16,10 @@ Wednesday 18 Mar 2026
   All day  Jane Smith's Birthday 🎈
   11:00 am Design review [Join] [Map]
 
-↑/↓/j/k navigate   Enter complete   u undo   n new   q quit
+↑/↓/j/k navigate   Enter complete   d delete   u undo   r redo   n new   q quit
 ```
 
-Entries are grouped by day. Events show [Join] and [Map] links where available. Reminders can be marked complete with Enter, added with n, and restored with u. The display updates automatically when your calendar or reminders change.
+Entries are grouped by day. Events show [Join] and [Map] links where available. Reminders can be marked complete with Enter, deleted with d, added with n, and undone with u. The display updates automatically when your calendar or reminders change.
 
 ## Installation
 
