@@ -9,6 +9,7 @@ public enum UndoAction: Equatable, Sendable {
     case reminderCompleted(entry: Entry)
     case reminderAdded(entry: Entry)
     case reminderDeleted(snapshot: ReminderSnapshot)
+    case eventDeleted(snapshot: EventSnapshot)
 }
 
 /// The complete UI state of the app.
@@ -79,6 +80,13 @@ public struct AppState: Equatable {
     public func deleteReminder(snapshot: ReminderSnapshot) -> AppState {
         var s = removeEntry(withID: snapshot.id)
         s.undoStack.append(.reminderDeleted(snapshot: snapshot))
+        s.redoStack = []
+        return s
+    }
+
+    public func deleteEvent(snapshot: EventSnapshot) -> AppState {
+        var s = removeEntry(withID: snapshot.id)
+        s.undoStack.append(.eventDeleted(snapshot: snapshot))
         s.redoStack = []
         return s
     }
@@ -158,6 +166,13 @@ public struct AppState: Equatable {
         return s
     }
 
+    public func undoDeleteEvent(snapshot: EventSnapshot) -> AppState {
+        var s = insertEntry(snapshot.entry)
+        s.redoStack.append(.eventDeleted(snapshot: snapshot))
+        s.undoStack.removeLast()
+        return s
+    }
+
     public func undoDeleteReminder(snapshot: ReminderSnapshot) -> AppState {
         var s = insertEntry(snapshot.entry)
         s.redoStack.append(.reminderDeleted(snapshot: snapshot))
@@ -175,6 +190,13 @@ public struct AppState: Equatable {
     public func redoAddReminder(entry: Entry) -> AppState {
         var s = insertEntry(entry)
         s.undoStack.append(.reminderAdded(entry: entry))
+        s.redoStack.removeLast()
+        return s
+    }
+
+    public func redoDeleteEvent(snapshot: EventSnapshot) -> AppState {
+        var s = removeEntry(withID: snapshot.id)
+        s.undoStack.append(.eventDeleted(snapshot: snapshot))
         s.redoStack.removeLast()
         return s
     }
