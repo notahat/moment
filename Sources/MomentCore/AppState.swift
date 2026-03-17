@@ -68,25 +68,19 @@ public struct AppState: Equatable {
         return s
     }
 
-    /// Removes the reminder with the given ID from `entries`, pushes a `reminderCompleted`
-    /// action onto `undoStack`, clears `redoStack`, and adjusts `selectedID` to the nearest remaining entry.
     public func completeReminder(id: String) -> AppState {
-        guard let i = index(ofEntryWithID: id) else { return self }
-        var s = self
-        s.undoStack.append(.reminderCompleted(entry: entries[i]))
+        guard let entry = entries.first(where: { $0.id == id }) else { return self }
+        var s = removeEntry(withID: id)
+        s.undoStack.append(.reminderCompleted(entry: entry))
         s.redoStack = []
-        s.entries.remove(at: i)
-        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         return s
     }
 
     public func deleteReminder(id: String) -> AppState {
-        guard let i = index(ofEntryWithID: id) else { return self }
-        var s = self
-        s.undoStack.append(.reminderDeleted(entry: entries[i]))
+        guard let entry = entries.first(where: { $0.id == id }) else { return self }
+        var s = removeEntry(withID: id)
+        s.undoStack.append(.reminderDeleted(entry: entry))
         s.redoStack = []
-        s.entries.remove(at: i)
-        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         return s
     }
 
@@ -144,75 +138,68 @@ public struct AppState: Equatable {
 
     public func addReminder(entry: Entry) -> AppState {
         guard case .reminder = entry.type else { return self }
-        var s = self
+        var s = insertEntry(entry)
         s.mode = .browsing
         s.undoStack.append(.reminderAdded(entry: entry))
         s.redoStack = []
-        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
-        s.entries.insert(entry, at: insertAt)
-        s.selectedID = entry.id
         return s
     }
 
     public func undoCompleteReminder(entry: Entry) -> AppState {
-        var s = self
+        var s = insertEntry(entry)
         s.redoStack.append(.reminderCompleted(entry: entry))
         s.undoStack.removeLast()
-        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
-        s.entries.insert(entry, at: insertAt)
-        s.selectedID = entry.id
         return s
     }
 
     public func undoAddReminder(entry: Entry) -> AppState {
-        var s = self
+        var s = removeEntry(withID: entry.id)
         s.redoStack.append(.reminderAdded(entry: entry))
         s.undoStack.removeLast()
-        if let i = s.index(ofEntryWithID: entry.id) {
-            s.entries.remove(at: i)
-            s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
-        }
         return s
     }
 
     public func undoDeleteReminder(entry: Entry) -> AppState {
-        var s = self
+        var s = insertEntry(entry)
         s.redoStack.append(.reminderDeleted(entry: entry))
         s.undoStack.removeLast()
-        let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
-        s.entries.insert(entry, at: insertAt)
-        s.selectedID = entry.id
         return s
     }
 
     public func redoCompleteReminder(entry: Entry) -> AppState {
-        var s = self
+        var s = removeEntry(withID: entry.id)
         s.undoStack.append(.reminderCompleted(entry: entry))
         s.redoStack.removeLast()
-        if let i = s.index(ofEntryWithID: entry.id) {
-            s.entries.remove(at: i)
-            s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
-        }
-        return s
-    }
-
-    public func redoDeleteReminder(entry: Entry) -> AppState {
-        guard let i = index(ofEntryWithID: entry.id) else { return self }
-        var s = self
-        s.undoStack.append(.reminderDeleted(entry: entry))
-        s.redoStack.removeLast()
-        s.entries.remove(at: i)
-        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         return s
     }
 
     public func redoAddReminder(entry: Entry) -> AppState {
-        var s = self
+        var s = insertEntry(entry)
         s.undoStack.append(.reminderAdded(entry: entry))
         s.redoStack.removeLast()
+        return s
+    }
+
+    public func redoDeleteReminder(entry: Entry) -> AppState {
+        var s = removeEntry(withID: entry.id)
+        s.undoStack.append(.reminderDeleted(entry: entry))
+        s.redoStack.removeLast()
+        return s
+    }
+
+    private func insertEntry(_ entry: Entry) -> AppState {
+        var s = self
         let insertAt = s.entries.firstIndex(where: { $0.date > entry.date }) ?? s.entries.count
         s.entries.insert(entry, at: insertAt)
         s.selectedID = entry.id
+        return s
+    }
+
+    private func removeEntry(withID id: String) -> AppState {
+        guard let i = index(ofEntryWithID: id) else { return self }
+        var s = self
+        s.entries.remove(at: i)
+        s.selectedID = s.entries.isEmpty ? nil : s.entries[min(i, s.entries.count - 1)].id
         return s
     }
 
