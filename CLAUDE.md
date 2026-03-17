@@ -67,4 +67,28 @@ Within a file, order functions so the public entry point comes first, with priva
 
 Use Swift 6 concurrency (async/await, `Sendable`, actors). Do not downgrade to Swift 5 concurrency mode. `Entry` and `EntryType` are marked `Sendable` to satisfy Swift 6 requirements.
 
-EventKit types predate strict concurrency, so both EventKit imports use `@preconcurrency` to suppress false Sendable errors.
+EventKit types predate strict concurrency, so both EventKit imports use `@preconcurrency` to suppress false Sendable errors. Don't use `nonisolated(unsafe)` or `@unchecked Sendable` as a workaround unless you can justify thread safety manually (as `RawTerminal` does).
+
+## Public API surface
+
+`MomentCore` is a library — be deliberate about what gets marked `public`. A type or method should be public only if it needs to be testable or reusable outside the library. If it only supports internal implementation, keep it `internal`.
+
+## Enums for variant types
+
+When a value can be one of several distinct cases with different associated data, use an enum rather than optional fields or a type hierarchy. All enums that cross actor boundaries must be `Sendable` and `Equatable`. Give associated values explicit labels (`case event(meetingURL: URL?, locationURL: URL?)`) rather than positional unlabelled tuples.
+
+## Styling and escape sequences
+
+All ANSI sequences live in `Styling`. Never inline raw escape codes (`\u{001B}[...]`) elsewhere — use `Styling.applyStyle()` or add a named constant to `Styling`. This keeps terminal output changes localised.
+
+## Error handling
+
+At EventKit boundaries, use `guard let ... else { return }` and fail silently or print a diagnostic — don't crash on missing items. Don't propagate `throws` for recoverable EventKit failures; callers can't do anything useful with them.
+
+## Testing
+
+Use the Swift Testing framework (`@Test`, struct-based suites, `#expect`). Group related tests under `// MARK: -` sections. Extract repeated setup into small `make*` helpers (`makeEntry()`, `makeDate()`) rather than duplicating inline.
+
+Test the public interface of a type, not its internal implementation — if a test needs to reach into private state, that's a signal to expose a better public method instead.
+
+Strip ANSI codes before asserting on rendered strings using a `stripANSI(_:)` helper.
